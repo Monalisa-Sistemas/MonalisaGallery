@@ -1,0 +1,21 @@
+name: monalisa_gallery
+description: Design system Flutter com componentes reutilizaveis da familia Monalisa.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  file_picker: ^8.1.7
+  google_fonts: ^6.2.1
+  image_picker: ^1.1.2
+  intl: ^0.19.0
+  mask_text_input_formatter: ^2.9.0
+  syncfusion_flutter_datepicker: ^28.1.38
+
+dev_dependencies:
+  flutter_lints: ^5.0.0
