@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
@@ -696,78 +697,93 @@ class _MDateInputState extends State<MDateInput> {
     final now = DateTime.now();
     final initial = widget.initialDate ?? now;
     DateTime? selectedDate;
+    final previousLocale = Intl.defaultLocale;
+    Intl.defaultLocale = 'pt_BR';
 
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
-          ),
-          content: SizedBox(
-            width: 320,
-            height: 400,
-            child: SfDateRangePicker(
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (context) {
+          return Localizations.override(
+            context: context,
+            locale: const Locale('pt', 'BR'),
+            delegates: GlobalMaterialLocalizations.delegates,
+            child: AlertDialog(
               backgroundColor: Colors.white,
-              initialSelectedDate: initial,
-              selectionMode: DateRangePickerSelectionMode.single,
-              showActionButtons: true,
-              showNavigationArrow: true,
-              onSelectionChanged: (DateRangePickerSelectionChangedArgs args) {
-                if (args.value is DateTime) {
-                  selectedDate = args.value;
-                }
-              },
-              onCancel: () => Navigator.of(context).pop(),
-              onSubmit: (_) => Navigator.of(context).pop(),
-              headerHeight: 80,
-              headerStyle: const DateRangePickerHeaderStyle(
-                backgroundColor: Colors.white,
-                textStyle: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              monthViewSettings: DateRangePickerMonthViewSettings(
-                showTrailingAndLeadingDates: true,
-                dayFormat: 'EEE',
-                viewHeaderStyle: DateRangePickerViewHeaderStyle(
-                  textStyle: TextStyle(
-                    color: Colors.blueGrey[600],
+              titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+              content: SizedBox(
+                width: 320,
+                height: 400,
+                child: SfDateRangePicker(
+                  backgroundColor: Colors.white,
+                  initialSelectedDate: initial,
+                  selectionMode: DateRangePickerSelectionMode.single,
+                  showActionButtons: true,
+                  showNavigationArrow: true,
+                  cancelText: 'Cancelar',
+                  confirmText: 'Confirmar',
+                  onSelectionChanged:
+                      (DateRangePickerSelectionChangedArgs args) {
+                    if (args.value is DateTime) {
+                      selectedDate = args.value;
+                    }
+                  },
+                  onCancel: () => Navigator.of(context).pop(),
+                  onSubmit: (_) => Navigator.of(context).pop(),
+                  headerHeight: 80,
+                  headerStyle: const DateRangePickerHeaderStyle(
+                    backgroundColor: Colors.white,
+                    textStyle: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  monthViewSettings: DateRangePickerMonthViewSettings(
+                    showTrailingAndLeadingDates: true,
+                    dayFormat: 'EEE',
+                    viewHeaderStyle: DateRangePickerViewHeaderStyle(
+                      textStyle: TextStyle(
+                        color: Colors.blueGrey[600],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  monthCellStyle: DateRangePickerMonthCellStyle(
+                    textStyle: const TextStyle(color: Colors.black87),
+                    todayTextStyle: TextStyle(
+                      color: Theme.of(context).primaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    todayCellDecoration: BoxDecoration(
+                      border: Border.all(color: Theme.of(context).primaryColor),
+                      shape: BoxShape.circle,
+                    ),
+                    disabledDatesTextStyle: TextStyle(color: Colors.grey[400]),
+                  ),
+                  selectionColor: Theme.of(context).primaryColor,
+                  todayHighlightColor: Theme.of(context).primaryColor,
+                  selectionTextStyle: const TextStyle(
+                    color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
+                  navigationDirection:
+                      DateRangePickerNavigationDirection.vertical,
                 ),
               ),
-              monthCellStyle: DateRangePickerMonthCellStyle(
-                textStyle: const TextStyle(color: Colors.black87),
-                todayTextStyle: TextStyle(
-                  color: Theme.of(context).primaryColor,
-                  fontWeight: FontWeight.bold,
-                ),
-                todayCellDecoration: BoxDecoration(
-                  border: Border.all(color: Theme.of(context).primaryColor),
-                  shape: BoxShape.circle,
-                ),
-                disabledDatesTextStyle: TextStyle(color: Colors.grey[400]),
-              ),
-              selectionColor: Theme.of(context).primaryColor,
-              todayHighlightColor: Theme.of(context).primaryColor,
-              selectionTextStyle: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-              navigationDirection: DateRangePickerNavigationDirection.vertical,
             ),
-          ),
-        );
-      },
-    );
+          );
+        },
+      );
+    } finally {
+      Intl.defaultLocale = previousLocale;
+    }
 
     if (selectedDate == null) return;
     setState(() {
@@ -852,88 +868,179 @@ class _MDateRangeInputState extends State<MDateRangeInput> {
         '${_dateFormat.format(start)} - ${_dateFormat.format(rangeEnd)}';
   }
 
+  DateTime _dateOnly(DateTime date) =>
+      DateTime(date.year, date.month, date.day);
+
+  List<_DateRangePreset> _buildPresets() {
+    final today = _dateOnly(DateTime.now());
+    final startOfWeek = today.subtract(Duration(days: today.weekday - 1));
+    final endOfWeek = startOfWeek.add(const Duration(days: 6));
+    final startOfLastWeek = startOfWeek.subtract(const Duration(days: 7));
+    final endOfLastWeek = startOfWeek.subtract(const Duration(days: 1));
+    final startOfMonth = DateTime(today.year, today.month);
+    final endOfMonth = DateTime(today.year, today.month + 1, 0);
+    final startOfLastMonth = DateTime(today.year, today.month - 1);
+    final endOfLastMonth = DateTime(today.year, today.month, 0);
+    final startOfYear = DateTime(today.year);
+    final endOfYear = DateTime(today.year, 12, 31);
+
+    return [
+      _DateRangePreset('Esta semana', startOfWeek, endOfWeek),
+      _DateRangePreset('Semana passada', startOfLastWeek, endOfLastWeek),
+      _DateRangePreset('Este mês', startOfMonth, endOfMonth),
+      _DateRangePreset('Este mês até hoje', startOfMonth, today),
+      _DateRangePreset('Mês passado', startOfLastMonth, endOfLastMonth),
+      _DateRangePreset('Este ano', startOfYear, endOfYear),
+      _DateRangePreset('Este ano ate hoje', startOfYear, today),
+    ];
+  }
+
   Future<void> _selectRange() async {
     PickerDateRange? range;
+    String? selectedPreset;
+    final presets = _buildPresets();
+    final pickerController = DateRangePickerController()
+      ..selectedRange = PickerDateRange(
+        widget.initialStartDate,
+        widget.initialEndDate,
+      );
+    final previousLocale = Intl.defaultLocale;
+    Intl.defaultLocale = 'pt_BR';
 
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
-          ),
-          content: SizedBox(
-            width: 320,
-            height: 400,
-            child: SfDateRangePicker(
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (context) {
+          final primary = Theme.of(context).primaryColor;
+          return Localizations.override(
+            context: context,
+            locale: const Locale('pt', 'BR'),
+            delegates: GlobalMaterialLocalizations.delegates,
+            child: AlertDialog(
               backgroundColor: Colors.white,
-              selectionMode: DateRangePickerSelectionMode.range,
-              initialSelectedRange: PickerDateRange(
-                widget.initialStartDate,
-                widget.initialEndDate,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              showActionButtons: true,
-              onSelectionChanged: (args) {
-                if (args.value is PickerDateRange) range = args.value;
-              },
-              onCancel: () => Navigator.of(context).pop(),
-              onSubmit: (_) => Navigator.of(context).pop(),
-              headerHeight: 80,
-              headerStyle: const DateRangePickerHeaderStyle(
-                backgroundColor: Colors.white,
-                textStyle: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+              titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+              content: SizedBox(
+                width: 340,
+                height: 455,
+                child: StatefulBuilder(
+                  builder: (context, setDialogState) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        MDropdown<_DateRangePreset>(
+                          label: 'Período rápido',
+                          value: selectedPreset == null
+                              ? null
+                              : presets.firstWhere(
+                                  (preset) => preset.label == selectedPreset,
+                                ),
+                          items: presets,
+                          hintText: 'Selecionar periodo...',
+                          maxHeight: 260,
+                          itemLabel: (preset) => preset.label,
+                          itemIcon: (_) => Icons.date_range_rounded,
+                          onChanged: (preset) {
+                            final selectedRange = PickerDateRange(
+                              preset.start,
+                              preset.end,
+                            );
+                            range = selectedRange;
+                            pickerController.selectedRange = selectedRange;
+                            pickerController.displayDate = preset.start;
+                            setDialogState(() {
+                              selectedPreset = preset.label;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                        Expanded(
+                          child: SfDateRangePicker(
+                            controller: pickerController,
+                            backgroundColor: Colors.white,
+                            selectionMode: DateRangePickerSelectionMode.range,
+                            initialSelectedRange: PickerDateRange(
+                              widget.initialStartDate,
+                              widget.initialEndDate,
+                            ),
+                            showActionButtons: true,
+                            cancelText: 'Cancelar',
+                            confirmText: 'Confirmar',
+                            onSelectionChanged: (args) {
+                              if (args.value is PickerDateRange) {
+                                range = args.value;
+                                setDialogState(() => selectedPreset = null);
+                              }
+                            },
+                            onCancel: () => Navigator.of(context).pop(),
+                            onSubmit: (_) => Navigator.of(context).pop(),
+                            headerHeight: 70,
+                            headerStyle: const DateRangePickerHeaderStyle(
+                              backgroundColor: Colors.white,
+                              textStyle: TextStyle(
+                                fontSize: 21,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            monthViewSettings: DateRangePickerMonthViewSettings(
+                              showTrailingAndLeadingDates: true,
+                              dayFormat: 'EEE',
+                              viewHeaderStyle: DateRangePickerViewHeaderStyle(
+                                textStyle: TextStyle(
+                                  color: Colors.blueGrey[600],
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            monthCellStyle: DateRangePickerMonthCellStyle(
+                              textStyle: const TextStyle(color: Colors.black87),
+                              todayTextStyle: TextStyle(
+                                color: primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              todayCellDecoration: BoxDecoration(
+                                border: Border.all(color: primary),
+                                shape: BoxShape.circle,
+                              ),
+                              disabledDatesTextStyle:
+                                  TextStyle(color: Colors.grey[400]),
+                            ),
+                            selectionColor: primary,
+                            startRangeSelectionColor: primary,
+                            endRangeSelectionColor: primary,
+                            rangeSelectionColor:
+                                primary.withValues(alpha: 0.16),
+                            todayHighlightColor: primary,
+                            selectionTextStyle: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            rangeTextStyle: const TextStyle(
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            navigationDirection:
+                                DateRangePickerNavigationDirection.vertical,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
-              monthViewSettings: DateRangePickerMonthViewSettings(
-                showTrailingAndLeadingDates: true,
-                dayFormat: 'EEE',
-                viewHeaderStyle: DateRangePickerViewHeaderStyle(
-                  textStyle: TextStyle(
-                    color: Colors.blueGrey[600],
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              monthCellStyle: DateRangePickerMonthCellStyle(
-                textStyle: const TextStyle(color: Colors.black87),
-                todayTextStyle: TextStyle(
-                  color: Theme.of(context).primaryColor,
-                  fontWeight: FontWeight.bold,
-                ),
-                todayCellDecoration: BoxDecoration(
-                  border: Border.all(color: Theme.of(context).primaryColor),
-                  shape: BoxShape.circle,
-                ),
-                disabledDatesTextStyle: TextStyle(color: Colors.grey[400]),
-              ),
-              selectionColor: Theme.of(context).primaryColor,
-              startRangeSelectionColor: Theme.of(context).primaryColor,
-              endRangeSelectionColor: Theme.of(context).primaryColor,
-              rangeSelectionColor:
-                  Theme.of(context).primaryColor.withValues(alpha: 0.16),
-              todayHighlightColor: Theme.of(context).primaryColor,
-              selectionTextStyle: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-              rangeTextStyle: const TextStyle(
-                color: Colors.black87,
-                fontWeight: FontWeight.w600,
-              ),
-              navigationDirection: DateRangePickerNavigationDirection.vertical,
             ),
-          ),
-        );
-      },
-    );
+          );
+        },
+      );
+    } finally {
+      Intl.defaultLocale = previousLocale;
+    }
 
     if (range == null) return;
     final start = range!.startDate;
@@ -957,6 +1064,14 @@ class _MDateRangeInputState extends State<MDateRangeInput> {
       ),
     );
   }
+}
+
+class _DateRangePreset {
+  final String label;
+  final DateTime start;
+  final DateTime end;
+
+  const _DateRangePreset(this.label, this.start, this.end);
 }
 
 class MDropdown<T> extends StatefulWidget {

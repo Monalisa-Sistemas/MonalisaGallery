@@ -9,6 +9,7 @@
       "dependencies": [
         "file_picker",
         "flutter",
+        "flutter_localizations",
         "google_fonts",
         "image_picker",
         "intl",
@@ -44,7 +45,7 @@
     },
     {
       "name": "intl",
-      "version": "0.19.0",
+      "version": "0.20.2",
       "dependencies": [
         "clock",
         "meta",
@@ -88,6 +89,15 @@
         "plugin_platform_interface",
         "web",
         "win32"
+      ]
+    },
+    {
+      "name": "flutter_localizations",
+      "version": "0.0.0",
+      "dependencies": [
+        "flutter",
+        "intl",
+        "path"
       ]
     },
     {
