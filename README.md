@@ -18,6 +18,7 @@ O objetivo da `monalisa_gallery` e padronizar visual, comportamento, nomes de pr
 - [Dialogs](#dialogs)
 - [Tooltips](#tooltips)
 - [Imagens](#imagens)
+- [Layout](#layout)
 - [Boas praticas](#boas-praticas)
 
 ## Instalacao
@@ -800,6 +801,45 @@ Estado publico:
 - `openPicker()`
 - `clearPhoto()`
 
+## Layout
+
+### MFieldAction
+
+Wrapper para alinhar botoes ou acoes laterais com o corpo de inputs que possuem `label`.
+
+Use quando um campo e um botao ficarem lado a lado em uma `Row`. Como a label ocupa altura acima do campo, o `MFieldAction` aplica um pequeno deslocamento vertical na acao para manter o botao alinhado com a area digitavel.
+
+```dart
+Row(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    Expanded(
+      child: MTextInput(
+        label: 'Codigo',
+        hintText: 'Informe o codigo',
+      ),
+    ),
+    const SizedBox(width: 10),
+    MFieldAction(
+      width: 132,
+      child: MButton.outlined(
+        label: 'Buscar',
+        icon: Icons.search,
+        expanded: true,
+        onPressed: () {},
+      ),
+    ),
+  ],
+);
+```
+
+Principais propriedades:
+
+- `child`: botao, icone ou acao lateral.
+- `hasFieldLabel`: aplica ou remove o deslocamento da label.
+- `labelOffset`: ajuste fino da altura reservada para a label.
+- `width`: largura opcional para a acao.
+
 ## Exemplo de tela basica
 
 ```dart
@@ -882,6 +922,7 @@ class _ClienteFormPageState extends State<ClienteFormPage> {
 - Use `MDropdown` para listas pequenas e medias.
 - Use `MSearchInput` para busca textual.
 - Use `MTextInput(maxLines: ..., maxLength: ...)` para observacoes.
+- Use `MFieldAction` para alinhar botoes laterais com inputs que possuem label.
 - Evite recriar estilos manualmente no app consumidor; primeiro tente propriedades do componente.
 
 ## API publica
@@ -899,3 +940,4 @@ Componentes exportados:
 - Botoes: `MButton`, `MButton.outlined`, `MIconButton`, `MActionButton`
 - Toggles e selecoes: `MToggleButton`, `MCheck`, `MSwitchToggle`
 - Feedback: `MAlert`, `MNotificationCard`, `MConfirmDialog`, `MToolTip`
+- Layout: `MFieldAction`

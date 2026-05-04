@@ -815,7 +815,7 @@ class _MDateInputState extends State<MDateInput> {
       },
       onSubmitted: _selectDate,
       suffixIcon: IconButton(
-        icon: const Icon(Icons.calendar_today, size: 18),
+        icon: const Icon(Icons.event_available_rounded, size: 20),
         onPressed: widget.enabled ? _selectDate : null,
       ),
     );
@@ -883,6 +883,10 @@ class _MDateRangeInputState extends State<MDateRangeInput> {
     final endOfLastMonth = DateTime(today.year, today.month, 0);
     final startOfYear = DateTime(today.year);
     final endOfYear = DateTime(today.year, 12, 31);
+    final startOfLastYear = DateTime(today.year - 1);
+    final endOfLastYear = DateTime(today.year - 1, 12, 31);
+    final lastThreeMonths = DateTime(today.year, today.month - 2, today.day);
+    final lastFiveMonths = DateTime(today.year, today.month - 4, today.day);
 
     return [
       _DateRangePreset('Esta semana', startOfWeek, endOfWeek),
@@ -890,8 +894,11 @@ class _MDateRangeInputState extends State<MDateRangeInput> {
       _DateRangePreset('Este mês', startOfMonth, endOfMonth),
       _DateRangePreset('Este mês até hoje', startOfMonth, today),
       _DateRangePreset('Mês passado', startOfLastMonth, endOfLastMonth),
+      _DateRangePreset('Últimos 3 meses', lastThreeMonths, today),
+      _DateRangePreset('Últimos 5 meses', lastFiveMonths, today),
       _DateRangePreset('Este ano', startOfYear, endOfYear),
-      _DateRangePreset('Este ano ate hoje', startOfYear, today),
+      _DateRangePreset('Este ano até hoje', startOfYear, today),
+      _DateRangePreset('Ano passado', startOfLastYear, endOfLastYear),
     ];
   }
 
@@ -1059,7 +1066,7 @@ class _MDateRangeInputState extends State<MDateRangeInput> {
       onTap: widget.enabled ? _selectRange : null,
       onSubmitted: _selectRange,
       suffixIcon: IconButton(
-        icon: const Icon(Icons.calendar_today, size: 18),
+        icon: const Icon(Icons.date_range_rounded, size: 20),
         onPressed: widget.enabled ? _selectRange : null,
       ),
     );
@@ -1552,17 +1559,61 @@ class MFileInput extends StatefulWidget {
 
 class _MFileInputState extends State<MFileInput> {
   late final TextEditingController _controller;
+  String? _fileName;
+  String? _filePath;
+  int? _fileSize;
+  bool _hovered = false;
 
   @override
   void initState() {
     super.initState();
     _controller = widget.controller ?? TextEditingController();
+    if (_controller.text.isNotEmpty) {
+      _filePath = _controller.text;
+      _fileName = _compactFileName(_controller.text);
+    }
   }
 
   @override
   void dispose() {
     if (widget.controller == null) _controller.dispose();
     super.dispose();
+  }
+
+  String _compactFileName(String value) {
+    final normalized = value.replaceAll('\\', '/');
+    final segments = normalized.split('/');
+    return segments.isEmpty ? value : segments.last;
+  }
+
+  String _compactPath(String value) {
+    final normalized = value.replaceAll('\\', '/');
+    if (normalized.length <= 48) return normalized;
+
+    final segments = normalized.split('/');
+    if (segments.length <= 2) {
+      return '...${normalized.substring(normalized.length - 45)}';
+    }
+
+    return '${segments.first}/.../${segments.last}';
+  }
+
+  String _formatSize(int? bytes) {
+    if (bytes == null) return 'Tamanho indisponivel';
+    if (bytes < 1024) return '$bytes B';
+
+    const units = ['KB', 'MB', 'GB'];
+    var size = bytes / 1024;
+    var unitIndex = 0;
+
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex++;
+    }
+
+    final formatted =
+        size >= 10 ? size.toStringAsFixed(1) : size.toStringAsFixed(2);
+    return '$formatted ${units[unitIndex]}';
   }
 
   Future<void> _pickFile() async {
@@ -1572,27 +1623,170 @@ class _MFileInputState extends State<MFileInput> {
       allowedExtensions:
           widget.allowedExtensions.isEmpty ? null : widget.allowedExtensions,
     );
-    final path = result?.files.single.path;
-    if (path == null) return;
-    setState(() => _controller.text = path);
-    widget.onChanged?.call(path);
+    final file = result?.files.single;
+    if (file == null) return;
+
+    final selectedPath = file.path ?? file.name;
+    setState(() {
+      _fileName = file.name;
+      _filePath = selectedPath;
+      _fileSize = file.size;
+      _controller.text = selectedPath;
+    });
+    widget.onChanged?.call(selectedPath);
+  }
+
+  void _clearFile() {
+    if (!widget.enabled) return;
+    setState(() {
+      _fileName = null;
+      _filePath = null;
+      _fileSize = null;
+      _controller.clear();
+    });
+    widget.onChanged?.call(null);
   }
 
   @override
   Widget build(BuildContext context) {
-    return MTextInput(
-      label: widget.label,
-      controller: _controller,
-      enabled: widget.enabled,
-      readOnly: true,
-      required: widget.required,
-      hintText: widget.placeholder,
-      onTap: widget.enabled ? _pickFile : null,
-      onSubmitted: _pickFile,
-      suffixIcon: IconButton(
-        icon: const Icon(Icons.folder_open_rounded),
-        onPressed: widget.enabled ? _pickFile : null,
-      ),
+    final primary = Theme.of(context).colorScheme.primary;
+    final hasFile = _filePath != null && _filePath!.isNotEmpty;
+    final borderColor =
+        widget.enabled ? MonalisaColors.border : Colors.grey.shade300;
+    final textColor =
+        widget.enabled ? MonalisaColors.text : Colors.grey.shade600;
+    final mutedColor =
+        widget.enabled ? MonalisaColors.textMuted : Colors.grey.shade500;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        MFieldLabel(label: widget.label, required: widget.required),
+        MouseRegion(
+          onEnter: (_) {
+            if (widget.enabled) setState(() => _hovered = true);
+          },
+          onExit: (_) {
+            if (_hovered) setState(() => _hovered = false);
+          },
+          cursor: widget.enabled
+              ? SystemMouseCursors.click
+              : SystemMouseCursors.forbidden,
+          child: Material(
+            color: Colors.white,
+            child: InkWell(
+              onTap: widget.enabled ? _pickFile : null,
+              borderRadius: BorderRadius.circular(8),
+              overlayColor: const WidgetStatePropertyAll(Colors.white),
+              hoverColor: Colors.white,
+              splashColor: Colors.white,
+              highlightColor: Colors.white,
+              focusColor: Colors.white,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                curve: Curves.easeOut,
+                constraints: const BoxConstraints(minHeight: 58),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: widget.enabled ? Colors.white : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _hovered ? primary : borderColor,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    AnimatedScale(
+                      scale: _hovered ? 1.04 : 1,
+                      duration: const Duration(milliseconds: 140),
+                      curve: Curves.easeOut,
+                      child: Container(
+                        width: 34,
+                        height: 34,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: hasFile
+                              ? primary.withValues(alpha: 0.10)
+                              : Colors.grey.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          hasFile
+                              ? Icons.insert_drive_file_rounded
+                              : Icons.upload_file_rounded,
+                          size: 20,
+                          color: hasFile ? primary : Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            hasFile
+                                ? _fileName ?? _compactFileName(_filePath!)
+                                : widget.placeholder,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: textColor,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            hasFile
+                                ? '${_compactPath(_filePath!)} - ${_formatSize(_fileSize)}'
+                                : 'Clique para selecionar um arquivo',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: mutedColor,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (hasFile)
+                      Tooltip(
+                        message: 'Remover selecao',
+                        child: MouseRegion(
+                          cursor: widget.enabled
+                              ? SystemMouseCursors.click
+                              : SystemMouseCursors.forbidden,
+                          child: IconButton(
+                            onPressed: widget.enabled ? _clearFile : null,
+                            icon: const Icon(Icons.close_rounded),
+                            iconSize: 18,
+                            color: Colors.grey.shade700,
+                            splashRadius: 18,
+                          ),
+                        ),
+                      )
+                    else
+                      Icon(
+                        Icons.folder_open_rounded,
+                        size: 20,
+                        color: widget.enabled ? primary : Colors.grey.shade400,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
