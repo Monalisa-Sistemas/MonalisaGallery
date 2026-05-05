@@ -12,12 +12,12 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  file_picker: ^8.1.7
+  file_picker: ^10.2.0
   google_fonts: ^6.2.1
   image_picker: ^1.1.2
   intl: ^0.20.2
   mask_text_input_formatter: ^2.9.0
-  syncfusion_flutter_datepicker: ^28.1.38
+  syncfusion_flutter_datepicker: ^29.2.11
 
 dev_dependencies:
   flutter_lints: ^5.0.0
