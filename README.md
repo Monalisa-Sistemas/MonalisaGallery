@@ -458,6 +458,46 @@ Principais propriedades:
 - `activeColor`
 - `foregroundColor`
 
+### MStatusToggle
+
+Toggle visual para alternar status com label, icone, cor e confirmacao opcional.
+
+```dart
+MStatusToggle(
+  value: ativo,
+  activeLabel: 'Ativo',
+  inactiveLabel: 'Inativo',
+  activeIcon: Icons.check_circle_outline,
+  inactiveIcon: Icons.block,
+  activeColor: Colors.green,
+  inactiveColor: Colors.blueGrey,
+  confirmTitle: 'Alterar status',
+  confirmMessage: 'Deseja realmente alterar este status?',
+  onChanged: (value) {
+    ativo = value;
+  },
+);
+```
+
+Principais propriedades:
+
+- `value`
+- `onChanged`
+- `activeLabel`
+- `inactiveLabel`
+- `activeIcon`
+- `inactiveIcon`
+- `activeColor`
+- `inactiveColor`
+- `confirmTitle`
+- `confirmMessage`
+- `confirmText`
+- `cancelText`
+- `enabled`
+- `height`
+- `confirmOnActivate`
+- `confirmOnDeactivate`
+
 ## Botoes
 
 ### MButton
@@ -613,6 +653,31 @@ Principais propriedades:
 - `enabled`: habilita/desabilita.
 
 ## Alertas
+
+### MLoadingOverlay
+
+Overlay de carregamento para bloquear uma tela, card ou area enquanto uma acao esta em andamento.
+
+```dart
+MLoadingOverlay(
+  isLoading: carregando,
+  title: 'Processando',
+  description: 'Aguarde enquanto os dados sao atualizados.',
+  child: MinhaTelaOuCard(),
+);
+```
+
+Principais propriedades:
+
+- `isLoading`
+- `child`
+- `title`
+- `description`
+- `color`
+- `overlayColor`
+- `blockInteraction`
+- `showCard`
+- `borderRadius`
 
 ### MAlert
 
@@ -938,6 +1003,6 @@ Componentes exportados:
 - Tema: `MonalisaTheme`, `MonalisaColors`
 - Inputs: `MTextInput`, `MMaskedTextInput`, `MNumberInput`, `MCurrencyInput`, `MDateInput`, `MDateRangeInput`, `MDropdown`, `MSearchInput`, `MFileInput`, `MPhotoPicker`
 - Botoes: `MButton`, `MButton.outlined`, `MIconButton`, `MActionButton`
-- Toggles e selecoes: `MToggleButton`, `MCheck`, `MSwitchToggle`
-- Feedback: `MAlert`, `MNotificationCard`, `MConfirmDialog`, `MToolTip`
+- Toggles e selecoes: `MToggleButton`, `MCheck`, `MSwitchToggle`, `MStatusToggle`
+- Feedback: `MAlert`, `MNotificationCard`, `MLoadingOverlay`, `MConfirmDialog`, `MToolTip`
 - Layout: `MFieldAction`

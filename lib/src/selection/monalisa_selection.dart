@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../feedback/monalisa_confirm_dialog.dart';
+
 class MCheck extends StatelessWidget {
   final bool value;
   final ValueChanged<bool>? onChanged;
@@ -210,6 +212,223 @@ class MSwitchToggle extends StatelessWidget {
                       ],
                     ),
                   ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class MStatusToggle extends StatefulWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final String activeLabel;
+  final String inactiveLabel;
+  final IconData activeIcon;
+  final IconData inactiveIcon;
+  final Color activeColor;
+  final Color inactiveColor;
+  final String? confirmTitle;
+  final String? confirmMessage;
+  final String confirmText;
+  final String cancelText;
+  final bool enabled;
+  final double height;
+  final bool confirmOnActivate;
+  final bool confirmOnDeactivate;
+
+  const MStatusToggle({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    required this.activeLabel,
+    required this.inactiveLabel,
+    required this.activeIcon,
+    required this.inactiveIcon,
+    this.activeColor = Colors.green,
+    this.inactiveColor = Colors.blueGrey,
+    this.confirmTitle,
+    this.confirmMessage,
+    this.confirmText = 'Sim',
+    this.cancelText = 'Não',
+    this.enabled = true,
+    this.height = 45,
+    this.confirmOnActivate = false,
+    this.confirmOnDeactivate = true,
+  });
+
+  @override
+  State<MStatusToggle> createState() => _MStatusToggleState();
+}
+
+class _MStatusToggleState extends State<MStatusToggle> {
+  late bool _value;
+  bool _hovered = false;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _value = widget.value;
+  }
+
+  @override
+  void didUpdateWidget(covariant MStatusToggle oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.value != widget.value) {
+      _value = widget.value;
+    }
+  }
+
+  Future<void> _toggle() async {
+    if (!widget.enabled || _busy) return;
+
+    final nextValue = !_value;
+    final shouldConfirm = widget.confirmTitle != null &&
+        widget.confirmMessage != null &&
+        ((nextValue && widget.confirmOnActivate) ||
+            (!nextValue && widget.confirmOnDeactivate));
+
+    if (shouldConfirm) {
+      setState(() => _busy = true);
+      final confirm = await MConfirmDialog.show(
+        context,
+        title: widget.confirmTitle!,
+        description: widget.confirmMessage!,
+        confirmText: widget.confirmText,
+        cancelText: widget.cancelText,
+        confirmColor: nextValue ? widget.activeColor : widget.inactiveColor,
+        icon: nextValue ? widget.activeIcon : widget.inactiveIcon,
+      );
+      if (!mounted) return;
+      setState(() => _busy = false);
+      if (!confirm) return;
+    }
+
+    setState(() => _value = nextValue);
+    widget.onChanged(nextValue);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final active = _value;
+    final baseColor = active ? widget.activeColor : widget.inactiveColor;
+    final backgroundColor = widget.enabled
+        ? Color.lerp(baseColor, Colors.white, _hovered && !_busy ? 0.08 : 0)!
+        : Colors.grey.shade300;
+    final foregroundColor = widget.enabled ? Colors.white : Colors.grey.shade600;
+    final label = active ? widget.activeLabel : widget.inactiveLabel;
+    final icon = active ? widget.activeIcon : widget.inactiveIcon;
+
+    return MouseRegion(
+      cursor: widget.enabled && !_busy
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.forbidden,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _toggle,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          height: widget.height,
+          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              if (widget.enabled)
+                BoxShadow(
+                  color: baseColor.withValues(alpha: _hovered ? 0.28 : 0.20),
+                  blurRadius: _hovered ? 12 : 8,
+                  offset: const Offset(0, 2),
+                ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 190),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (child, animation) {
+                        final offset = Tween<Offset>(
+                          begin: const Offset(0, 0.18),
+                          end: Offset.zero,
+                        ).animate(animation);
+
+                        return FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(position: offset, child: child),
+                        );
+                      },
+                      child: Icon(
+                        icon,
+                        key: ValueKey(icon),
+                        color: foregroundColor,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 190),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        layoutBuilder: (currentChild, previousChildren) {
+                          return Stack(
+                            alignment: Alignment.centerLeft,
+                            children: [
+                              ...previousChildren,
+                              if (currentChild != null) currentChild,
+                            ],
+                          );
+                        },
+                        transitionBuilder: (child, animation) {
+                          final offset = Tween<Offset>(
+                            begin: const Offset(0.04, 0),
+                            end: Offset.zero,
+                          ).animate(animation);
+
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(position: offset, child: child),
+                          );
+                        },
+                        child: Text(
+                          label,
+                          key: ValueKey(label),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: foregroundColor,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              IgnorePointer(
+                child: Switch.adaptive(
+                  value: active,
+                  onChanged: widget.enabled && !_busy ? (_) {} : null,
+                  activeThumbColor: Colors.white,
+                  activeTrackColor: Colors.white.withValues(alpha: 0.42),
+                  inactiveThumbColor: Colors.white,
+                  inactiveTrackColor: Colors.white.withValues(alpha: 0.32),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ),
             ],
