@@ -132,7 +132,7 @@ class _MToolTipState extends State<MToolTip>
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.primary;
+    final color = Colors.blueGrey;
 
     return CompositedTransformTarget(
       link: _link,
@@ -144,22 +144,19 @@ class _MToolTipState extends State<MToolTip>
           behavior: HitTestBehavior.opaque,
           onTap: _toggle,
           child: Container(
-            width: 18,
-            height: 18,
+            width: 25,
+            height: 25,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(color: color.withValues(alpha: 0.65)),
               color: Colors.white,
             ),
-            child: Text(
-              '?',
-              style: TextStyle(
-                height: 1,
-                color: color,
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-              ),
+            child: Icon(
+              //Icons.store,
+              Icons.question_mark_rounded,
+              size: 14,
+              color: color,
             ),
           ),
         ),
