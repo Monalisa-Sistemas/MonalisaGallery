@@ -678,6 +678,9 @@ Principais propriedades:
 - `blockInteraction`
 - `showCard`
 - `borderRadius`
+- `minLoadingWidth`: largura minima usada enquanto carrega quando o filho nao define largura.
+
+O titulo e limitado a 1 linha. A descricao e limitada a 2 linhas. Quando o filho nao define altura, o overlay usa a altura necessaria para o card de loading.
 
 ### MAlert
 

@@ -15,6 +15,7 @@ class MLoadingOverlay extends StatelessWidget {
   final bool blockInteraction;
   final bool showCard;
   final double borderRadius;
+  final double minLoadingWidth;
 
   const MLoadingOverlay({
     super.key,
@@ -27,6 +28,7 @@ class MLoadingOverlay extends StatelessWidget {
     this.blockInteraction = true,
     this.showCard = true,
     this.borderRadius = 8,
+    this.minLoadingWidth = 280,
   });
 
   @override
@@ -39,26 +41,23 @@ class MLoadingOverlay extends StatelessWidget {
       cursor: isLoading && blockInteraction
           ? SystemMouseCursors.forbidden
           : SystemMouseCursors.basic,
-      child: Stack(
-        children: [
-          AbsorbPointer(absorbing: isLoading && blockInteraction, child: child),
-          Positioned.fill(
-            child: IgnorePointer(
-              ignoring: !isLoading,
-              child: AnimatedOpacity(
-                opacity: isLoading ? 1 : 0,
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOut,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: barrierColor,
-                    borderRadius: BorderRadius.circular(borderRadius),
-                  ),
-                  child: Center(
-                    child: AnimatedScale(
-                      scale: isLoading ? 1 : 0.96,
-                      duration: const Duration(milliseconds: 180),
-                      curve: Curves.easeOutCubic,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minWidth: isLoading ? minLoadingWidth : 0,
+        ),
+        child: Stack(
+          children: [
+            AbsorbPointer(
+              absorbing: isLoading && blockInteraction,
+              child: child,
+            ),
+            if (isLoading)
+              IgnorePointer(
+                child: ExcludeSemantics(
+                  child: TickerMode(
+                    enabled: false,
+                    child: Opacity(
+                      opacity: 0,
                       child: _MLoadingContent(
                         title: title,
                         description: description,
@@ -69,9 +68,37 @@ class MLoadingOverlay extends StatelessWidget {
                   ),
                 ),
               ),
+            Positioned.fill(
+              child: IgnorePointer(
+                ignoring: !isLoading,
+                child: AnimatedOpacity(
+                  opacity: isLoading ? 1 : 0,
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOut,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: barrierColor,
+                      borderRadius: BorderRadius.circular(borderRadius),
+                    ),
+                    child: Center(
+                      child: AnimatedScale(
+                        scale: isLoading ? 1 : 0.96,
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOutCubic,
+                        child: _MLoadingContent(
+                          title: title,
+                          description: description,
+                          color: primary,
+                          showCard: showCard,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
