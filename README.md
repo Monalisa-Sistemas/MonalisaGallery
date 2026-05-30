@@ -624,6 +624,8 @@ Principais propriedades:
 - `onPressed`
 - `tooltip`
 - `danger`
+- `backgroundColor`
+- `foregroundColor`
 
 ## Toggles
 

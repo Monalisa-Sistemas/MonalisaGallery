@@ -503,6 +503,8 @@ class MActionButton extends StatefulWidget {
   final FutureOr<void> Function()? onPressed;
   final String tooltip;
   final bool danger;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
 
   const MActionButton({
     super.key,
@@ -510,6 +512,8 @@ class MActionButton extends StatefulWidget {
     required this.onPressed,
     required this.tooltip,
     this.danger = false,
+    this.backgroundColor,
+    this.foregroundColor,
   });
 
   @override
@@ -540,8 +544,12 @@ class _MActionButtonState extends State<MActionButton> {
 
   @override
   Widget build(BuildContext context) {
-    final color =
+    final fallbackColor =
         widget.danger ? Colors.red : Theme.of(context).colorScheme.primary;
+    final foregroundColor = widget.foregroundColor ?? fallbackColor;
+    final backgroundColor =
+        widget.backgroundColor ?? foregroundColor.withValues(alpha: 0.06);
+    final borderColor = foregroundColor.withValues(alpha: 0.28);
 
     return Tooltip(
       message: widget.tooltip,
@@ -556,9 +564,9 @@ class _MActionButtonState extends State<MActionButton> {
             height: 38,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              border: Border.all(color: color.withValues(alpha: 0.28)),
+              border: Border.all(color: borderColor),
               borderRadius: BorderRadius.circular(8),
-              color: color.withValues(alpha: 0.06),
+              color: backgroundColor,
             ),
             child: _internalLoading
                 ? SizedBox(
@@ -566,10 +574,11 @@ class _MActionButtonState extends State<MActionButton> {
                     height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(color),
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(foregroundColor),
                     ),
                   )
-                : Icon(widget.icon, size: 20, color: color),
+                : Icon(widget.icon, size: 20, color: foregroundColor),
           ),
         ),
       ),
