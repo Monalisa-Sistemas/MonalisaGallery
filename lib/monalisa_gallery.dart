@@ -4,6 +4,7 @@ export 'src/feedback/monalisa_confirm_dialog.dart';
 export 'src/feedback/monalisa_loading_overlay.dart';
 export 'src/feedback/monalisa_tooltip.dart';
 export 'src/inputs/monalisa_inputs.dart';
+export 'src/inputs/monalisa_numpad.dart';
 export 'src/layout/monalisa_layout.dart';
 export 'src/selection/monalisa_selection.dart';
 export 'src/theme/monalisa_colors.dart';
