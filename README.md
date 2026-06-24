@@ -11,6 +11,7 @@ O objetivo da `monalisa_gallery` e padronizar visual, comportamento, nomes de pr
 - [Convencoes da biblioteca](#convencoes-da-biblioteca)
 - [Inputs de texto](#inputs-de-texto)
 - [Inputs numericos, datas e arquivos](#inputs-numericos-datas-e-arquivos)
+  - [MNumPad](#mnumpad)
 - [Dropdowns e selecoes](#dropdowns-e-selecoes)
 - [Botoes](#botoes)
 - [Toggles](#toggles)
@@ -366,6 +367,119 @@ Principais propriedades:
 - `onChanged`
 - `onSubmitted`
 - `autoFocus`
+
+### MNumPad
+
+Teclado virtual reutilizavel para preencher qualquer campo conectado a um `TextEditingController`.
+
+O componente abre em overlay, pode ser movido pelo usuario, destaca o campo em edicao com `targetKey` e possui dois modos:
+
+- `MNumPadMode.numeric`: teclado numerico.
+- `MNumPadMode.text`: teclado completo com numeros, letras em padrao QWERTY, espaco e backspace.
+
+#### Uso basico
+
+```dart
+final codigoController = TextEditingController();
+
+MTextInput(
+  label: 'Codigo',
+  controller: codigoController,
+);
+
+MButton.outlined(
+  label: 'Abrir teclado',
+  icon: Icons.dialpad_rounded,
+  onPressed: () {
+    MNumPad.show(
+      context,
+      controller: codigoController,
+    );
+  },
+);
+```
+
+#### Com highlight no campo preenchido
+
+Use uma `GlobalKey` no campo alvo e passe essa chave em `targetKey`.
+
+```dart
+final codigoController = TextEditingController();
+final codigoFieldKey = GlobalKey();
+
+MTextInput(
+  key: codigoFieldKey,
+  label: 'Codigo do cliente',
+  controller: codigoController,
+  keyboardType: TextInputType.number,
+);
+
+MButton.outlined(
+  label: 'NumPad',
+  icon: Icons.dialpad_rounded,
+  onPressed: () {
+    MNumPad.show(
+      context,
+      controller: codigoController,
+      targetKey: codigoFieldKey,
+      title: 'Codigo numerico',
+    );
+  },
+);
+```
+
+#### Abrir em modo texto
+
+Por padrao, o teclado abre em modo numerico. Para abrir diretamente com letras:
+
+```dart
+MNumPad.show(
+  context,
+  controller: codigoController,
+  targetKey: codigoFieldKey,
+  initialMode: MNumPadMode.text,
+);
+```
+
+Para forcar o modo numerico:
+
+```dart
+MNumPad.show(
+  context,
+  controller: codigoController,
+  initialMode: MNumPadMode.numeric,
+);
+```
+
+#### Capturando confirmacao ou cancelamento
+
+```dart
+final result = await MNumPad.show(
+  context,
+  controller: codigoController,
+  targetKey: codigoFieldKey,
+  initialMode: MNumPadMode.numeric,
+);
+
+if (result == MNumPadResult.confirmed) {
+  print('Confirmado: ${codigoController.text}');
+}
+
+if (result == MNumPadResult.canceled) {
+  print('Cancelado');
+}
+```
+
+#### Parametros
+
+- `controller`: obrigatorio. Campo que recebe o texto digitado.
+- `title`: titulo exibido no topo do teclado.
+- `targetKey`: chave do widget que deve receber o destaque visual no overlay.
+- `initialMode`: modo inicial do teclado. Use `MNumPadMode.numeric` ou `MNumPadMode.text`.
+- `onConfirm`: chamado ao confirmar.
+- `onCancel`: chamado ao cancelar ou clicar fora do popup.
+- `onClear`: mantido por compatibilidade de API.
+- `barrierDismissible`: permite cancelar ao clicar fora do teclado.
 
 ## Dropdowns e selecoes
 
@@ -1006,7 +1120,7 @@ lib/monalisa_gallery.dart
 Componentes exportados:
 
 - Tema: `MonalisaTheme`, `MonalisaColors`
-- Inputs: `MTextInput`, `MMaskedTextInput`, `MNumberInput`, `MCurrencyInput`, `MDateInput`, `MDateRangeInput`, `MDropdown`, `MSearchInput`, `MFileInput`, `MPhotoPicker`
+- Inputs: `MTextInput`, `MMaskedTextInput`, `MNumberInput`, `MCurrencyInput`, `MDateInput`, `MDateRangeInput`, `MDropdown`, `MSearchInput`, `MFileInput`, `MPhotoPicker`, `MNumPad`, `MNumPadMode`, `MNumPadResult`
 - Botoes: `MButton`, `MButton.outlined`, `MIconButton`, `MActionButton`
 - Toggles e selecoes: `MToggleButton`, `MCheck`, `MSwitchToggle`, `MStatusToggle`
 - Feedback: `MAlert`, `MNotificationCard`, `MLoadingOverlay`, `MConfirmDialog`, `MToolTip`

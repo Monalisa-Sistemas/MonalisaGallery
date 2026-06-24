@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -6,10 +7,13 @@ import '../theme/monalisa_colors.dart';
 
 enum MNumPadResult { confirmed, canceled }
 
+enum MNumPadMode { numeric, text }
+
 class MNumPad extends StatefulWidget {
   final TextEditingController controller;
   final String title;
   final GlobalKey? targetKey;
+  final MNumPadMode initialMode;
   final VoidCallback? onConfirm;
   final VoidCallback? onCancel;
   final VoidCallback? onClear;
@@ -19,6 +23,7 @@ class MNumPad extends StatefulWidget {
     required this.controller,
     this.title = 'Teclado numerico',
     this.targetKey,
+    this.initialMode = MNumPadMode.numeric,
     this.onConfirm,
     this.onCancel,
     this.onClear,
@@ -29,6 +34,7 @@ class MNumPad extends StatefulWidget {
     required TextEditingController controller,
     String title = 'Teclado numerico',
     GlobalKey? targetKey,
+    MNumPadMode initialMode = MNumPadMode.numeric,
     VoidCallback? onConfirm,
     VoidCallback? onCancel,
     VoidCallback? onClear,
@@ -45,6 +51,7 @@ class MNumPad extends StatefulWidget {
           controller: controller,
           title: title,
           targetKey: targetKey,
+          initialMode: initialMode,
           onConfirm: onConfirm,
           onCancel: onCancel,
           onClear: onClear,
@@ -73,14 +80,23 @@ class MNumPad extends StatefulWidget {
 }
 
 class _MNumPadState extends State<MNumPad> {
-  static const double _panelWidth = 328;
+  static const double _numericPanelWidth = 328;
+  static const double _textPanelWidth = 640;
   static const double _panelPadding = 16;
 
   final _panelKey = GlobalKey();
   final _overlayKey = GlobalKey();
   Offset? _offset;
-  Size _panelSize = const Size(_panelWidth, 392);
+  Size _panelSize = const Size(_numericPanelWidth, 392);
   Rect? _targetRect;
+  late MNumPadMode _mode;
+  bool _keyboardVisible = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _mode = widget.initialMode;
+  }
 
   @override
   void didChangeDependencies() {
@@ -168,6 +184,18 @@ class _MNumPadState extends State<MNumPad> {
     });
   }
 
+  Future<void> _changeMode(MNumPadMode mode) async {
+    if (_mode == mode) return;
+    setState(() => _keyboardVisible = false);
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    if (!mounted) return;
+    setState(() => _mode = mode);
+    _scheduleLayoutSync();
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    if (!mounted) return;
+    setState(() => _keyboardVisible = true);
+  }
+
   void _insert(String value) {
     final currentValue = widget.controller.value;
     final selection = currentValue.selection;
@@ -185,9 +213,30 @@ class _MNumPadState extends State<MNumPad> {
     );
   }
 
-  void _clear() {
-    widget.controller.clear();
-    widget.onClear?.call();
+  void _backspace() {
+    final currentValue = widget.controller.value;
+    final selection = currentValue.selection;
+    final text = currentValue.text;
+    final start = selection.isValid ? selection.start : text.length;
+    final end = selection.isValid ? selection.end : text.length;
+    final normalizedStart = start.clamp(0, text.length).toInt();
+    final normalizedEnd = end.clamp(0, text.length).toInt();
+
+    if (normalizedStart != normalizedEnd) {
+      final nextText = text.replaceRange(normalizedStart, normalizedEnd, '');
+      widget.controller.value = TextEditingValue(
+        text: nextText,
+        selection: TextSelection.collapsed(offset: normalizedStart),
+      );
+      return;
+    }
+
+    if (normalizedStart == 0) return;
+    final nextText = text.replaceRange(normalizedStart - 1, normalizedStart, '');
+    widget.controller.value = TextEditingValue(
+      text: nextText,
+      selection: TextSelection.collapsed(offset: normalizedStart - 1),
+    );
   }
 
   void _cancel() {
@@ -203,8 +252,10 @@ class _MNumPadState extends State<MNumPad> {
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.sizeOf(context);
+    final desiredWidth =
+        _mode == MNumPadMode.numeric ? _numericPanelWidth : _textPanelWidth;
     final width = math
-        .min(_panelWidth, math.max(260.0, screenSize.width - 24))
+        .min(desiredWidth, math.max(260.0, screenSize.width - 24))
         .toDouble();
     final maxHeight = math.max(300.0, screenSize.height - 24).toDouble();
     final offset = _offset ??
@@ -241,10 +292,13 @@ class _MNumPadState extends State<MNumPad> {
               child: _NumPadPanel(
                 key: _panelKey,
                 width: width,
+                mode: _mode,
+                keyboardVisible: _keyboardVisible,
                 title: widget.title,
+                onModeChanged: _changeMode,
                 onDragUpdate: _move,
                 onDigit: _insert,
-                onClear: _clear,
+                onBackspace: _backspace,
                 onCancel: _cancel,
                 onConfirm: _confirm,
               ),
@@ -329,9 +383,12 @@ class _NumPadTargetHighlight extends StatelessWidget {
 
 class _NumPadPanel extends StatelessWidget {
   final double width;
+  final MNumPadMode mode;
+  final bool keyboardVisible;
   final String title;
+  final ValueChanged<MNumPadMode> onModeChanged;
   final ValueChanged<String> onDigit;
-  final VoidCallback onClear;
+  final VoidCallback onBackspace;
   final VoidCallback onCancel;
   final VoidCallback onConfirm;
   final GestureDragUpdateCallback onDragUpdate;
@@ -339,9 +396,12 @@ class _NumPadPanel extends StatelessWidget {
   const _NumPadPanel({
     super.key,
     required this.width,
+    required this.mode,
+    required this.keyboardVisible,
     required this.title,
+    required this.onModeChanged,
     required this.onDigit,
-    required this.onClear,
+    required this.onBackspace,
     required this.onCancel,
     required this.onConfirm,
     required this.onDragUpdate,
@@ -355,7 +415,9 @@ class _NumPadPanel extends StatelessWidget {
       elevation: 14,
       shadowColor: Colors.black.withValues(alpha: 0.16),
       borderRadius: BorderRadius.circular(10),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
         width: width,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -410,76 +472,459 @@ class _NumPadPanel extends StatelessWidget {
                       ),
                     ),
                   ),
-                  _NumPadIconButton(
-                    icon: Icons.close_rounded,
-                    tooltip: 'Cancelar',
-                    onPressed: onCancel,
+                  _NumPadModeSwitch(
+                    mode: mode,
+                    onChanged: onModeChanged,
                   ),
                 ],
               ),
               const SizedBox(height: 14),
-              _NumPadRow(
-                children: [
-                  _NumPadButton(label: '7', onPressed: () => onDigit('7')),
-                  _NumPadButton(label: '8', onPressed: () => onDigit('8')),
-                  _NumPadButton(label: '9', onPressed: () => onDigit('9')),
-                ],
+              AnimatedOpacity(
+                opacity: keyboardVisible ? 1 : 0,
+                duration: const Duration(milliseconds: 40),
+                curve: Curves.easeOutCubic,
+                child: mode == MNumPadMode.numeric
+                    ? _NumericKeyboard(
+                        visible: keyboardVisible,
+                        onDigit: onDigit,
+                        onBackspace: onBackspace,
+                      )
+                    : _TextKeyboard(
+                        visible: keyboardVisible,
+                        onInput: onDigit,
+                        onBackspace: onBackspace,
+                        onCancel: onCancel,
+                        onConfirm: onConfirm,
+                      ),
               ),
-              _NumPadRow(
-                children: [
-                  _NumPadButton(label: '4', onPressed: () => onDigit('4')),
-                  _NumPadButton(label: '5', onPressed: () => onDigit('5')),
-                  _NumPadButton(label: '6', onPressed: () => onDigit('6')),
-                ],
+              if (mode == MNumPadMode.numeric) ...[
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _NumPadButton(
+                        label: 'Cancelar',
+                        compactText: true,
+                        foregroundColor: MonalisaColors.textMuted,
+                        hoverForegroundColor: MonalisaColors.danger,
+                        onPressed: onCancel,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: _NumPadButton(
+                        label: 'Confirmar',
+                        icon: Icons.check_rounded,
+                        compactText: true,
+                        backgroundColor: MonalisaColors.success,
+                        foregroundColor: Colors.white,
+                        onPressed: onConfirm,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NumPadModeSwitch extends StatelessWidget {
+  final MNumPadMode mode;
+  final ValueChanged<MNumPadMode> onChanged;
+
+  const _NumPadModeSwitch({
+    required this.mode,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+
+    return Container(
+      width: 78,
+      height: 32,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: MonalisaColors.surfaceSoft,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: MonalisaColors.border.withValues(alpha: 0.55)),
+      ),
+      child: Stack(
+        children: [
+          AnimatedAlign(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            alignment: mode == MNumPadMode.numeric
+                ? Alignment.centerLeft
+                : Alignment.centerRight,
+            child: Container(
+              width: 34,
+              height: 26,
+              decoration: BoxDecoration(
+                color: primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: primary.withValues(alpha: 0.26)),
               ),
-              _NumPadRow(
-                children: [
-                  _NumPadButton(label: '1', onPressed: () => onDigit('1')),
-                  _NumPadButton(label: '2', onPressed: () => onDigit('2')),
-                  _NumPadButton(label: '3', onPressed: () => onDigit('3')),
-                ],
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: _ModeSwitchOption(
+                  icon: Icons.dialpad_rounded,
+                  tooltip: 'Teclado numerico',
+                  selected: mode == MNumPadMode.numeric,
+                  onPressed: () => onChanged(MNumPadMode.numeric),
+                ),
               ),
-              _NumPadRow(
-                children: [
-                  _NumPadButton(label: '0', onPressed: () => onDigit('0')),
-                  _NumPadButton(label: ',', onPressed: () => onDigit(',')),
-                  _NumPadButton(
-                    label: 'Limpar',
+              Expanded(
+                child: _ModeSwitchOption(
+                  icon: Icons.keyboard_alt_outlined,
+                  tooltip: 'Teclado completo',
+                  selected: mode == MNumPadMode.text,
+                  onPressed: () => onChanged(MNumPadMode.text),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModeSwitchOption extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  const _ModeSwitchOption({
+    required this.icon,
+    required this.tooltip,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(6),
+        overlayColor: WidgetStatePropertyAll(primary.withValues(alpha: 0.06)),
+        child: Center(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 120),
+            child: Icon(
+              icon,
+              key: ValueKey('$tooltip-$selected'),
+              size: 17,
+              color: selected ? primary : Colors.grey.shade600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NumericKeyboard extends StatelessWidget {
+  final bool visible;
+  final ValueChanged<String> onDigit;
+  final VoidCallback onBackspace;
+
+  const _NumericKeyboard({
+    required this.visible,
+    required this.onDigit,
+    required this.onBackspace,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _NumPadRow(
+          children: [
+            _KeyboardWaveItem(
+              visible: visible,
+              index: 0,
+              child: _NumPadButton(label: '7', onPressed: () => onDigit('7')),
+            ),
+            _KeyboardWaveItem(
+              visible: visible,
+              index: 1,
+              child: _NumPadButton(label: '8', onPressed: () => onDigit('8')),
+            ),
+            _KeyboardWaveItem(
+              visible: visible,
+              index: 2,
+              child: _NumPadButton(label: '9', onPressed: () => onDigit('9')),
+            ),
+          ],
+        ),
+        _NumPadRow(
+          children: [
+            _KeyboardWaveItem(
+              visible: visible,
+              index: 0,
+              child: _NumPadButton(label: '4', onPressed: () => onDigit('4')),
+            ),
+            _KeyboardWaveItem(
+              visible: visible,
+              index: 1,
+              child: _NumPadButton(label: '5', onPressed: () => onDigit('5')),
+            ),
+            _KeyboardWaveItem(
+              visible: visible,
+              index: 2,
+              child: _NumPadButton(label: '6', onPressed: () => onDigit('6')),
+            ),
+          ],
+        ),
+        _NumPadRow(
+          children: [
+            _KeyboardWaveItem(
+              visible: visible,
+              index: 0,
+              child: _NumPadButton(label: '1', onPressed: () => onDigit('1')),
+            ),
+            _KeyboardWaveItem(
+              visible: visible,
+              index: 1,
+              child: _NumPadButton(label: '2', onPressed: () => onDigit('2')),
+            ),
+            _KeyboardWaveItem(
+              visible: visible,
+              index: 2,
+              child: _NumPadButton(label: '3', onPressed: () => onDigit('3')),
+            ),
+          ],
+        ),
+        _NumPadRow(
+          children: [
+            _KeyboardWaveItem(
+              visible: visible,
+              index: 0,
+              child: _NumPadButton(label: '0', onPressed: () => onDigit('0')),
+            ),
+            _KeyboardWaveItem(
+              visible: visible,
+              index: 1,
+              child: _NumPadButton(label: ',', onPressed: () => onDigit(',')),
+            ),
+            _KeyboardWaveItem(
+              visible: visible,
+              index: 2,
+              child: _NumPadButton(
+                label: '',
+                icon: Icons.backspace_outlined,
+                compactText: true,
+                foregroundColor: MonalisaColors.textMuted,
+                onPressed: onBackspace,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _TextKeyboard extends StatelessWidget {
+  final bool visible;
+  final ValueChanged<String> onInput;
+  final VoidCallback onBackspace;
+  final VoidCallback onCancel;
+  final VoidCallback onConfirm;
+
+  const _TextKeyboard({
+    required this.visible,
+    required this.onInput,
+    required this.onBackspace,
+    required this.onCancel,
+    required this.onConfirm,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _TextKeyboardNumberRow(
+          visible: visible,
+          onInput: onInput,
+          onBackspace: onBackspace,
+        ),
+        _TextKeyboardRow(
+          visible: visible,
+          keys: const ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+          onInput: onInput,
+        ),
+        _TextKeyboardRow(
+          visible: visible,
+          keys: const ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+          horizontalPadding: 18,
+          onInput: onInput,
+        ),
+        _TextKeyboardRow(
+          visible: visible,
+          keys: const ['Z', 'X', 'C', 'V', 'B', 'N', 'M'],
+          horizontalPadding: 54,
+          onInput: onInput,
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: _KeyboardWaveItem(
+                  visible: visible,
+                  index: 0,
+                  child: _NumPadButton(
+                    label: '',
+                    icon: Icons.close_rounded,
                     compactText: true,
                     foregroundColor: MonalisaColors.textMuted,
-                    onPressed: onClear,
+                    hoverForegroundColor: MonalisaColors.danger,
+                    onPressed: onCancel,
                   ),
-                ],
+                ),
               ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Expanded(
-                    child: _NumPadButton(
-                      label: 'Cancelar',
-                      compactText: true,
-                      foregroundColor: MonalisaColors.textMuted,
-                      hoverForegroundColor: MonalisaColors.danger,
-                      onPressed: onCancel,
-                    ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 6,
+                child: _KeyboardWaveItem(
+                  visible: visible,
+                  index: 1,
+                  child: _NumPadButton(
+                    label: 'Espaco',
+                    compactText: true,
+                    onPressed: () => onInput(' '),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    flex: 2,
-                    child: _NumPadButton(
-                      label: 'Confirmar',
-                      icon: Icons.check_rounded,
-                      compactText: true,
-                      backgroundColor: MonalisaColors.success,
-                      foregroundColor: Colors.white,
-                      onPressed: onConfirm,
-                    ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _KeyboardWaveItem(
+                  visible: visible,
+                  index: 2,
+                  child: _NumPadButton(
+                    label: '',
+                    icon: Icons.check_rounded,
+                    compactText: true,
+                    backgroundColor: MonalisaColors.success,
+                    foregroundColor: Colors.white,
+                    onPressed: onConfirm,
                   ),
-                ],
+                ),
               ),
             ],
           ),
         ),
+      ],
+    );
+  }
+}
+
+class _TextKeyboardNumberRow extends StatelessWidget {
+  final bool visible;
+  final ValueChanged<String> onInput;
+  final VoidCallback onBackspace;
+
+  const _TextKeyboardNumberRow({
+    required this.visible,
+    required this.onInput,
+    required this.onBackspace,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          for (var index = 0; index < keys.length; index++) ...[
+            Expanded(
+              child: _KeyboardWaveItem(
+                visible: visible,
+                index: index,
+                child: _NumPadButton(
+                  label: keys[index],
+                  onPressed: () => onInput(keys[index]),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Expanded(
+            child: _KeyboardWaveItem(
+              visible: visible,
+              index: keys.length,
+              child: _NumPadButton(
+                label: '',
+                icon: Icons.backspace_outlined,
+                compactText: true,
+                foregroundColor: MonalisaColors.textMuted,
+                onPressed: onBackspace,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TextKeyboardRow extends StatelessWidget {
+  final bool visible;
+  final List<String> keys;
+  final ValueChanged<String> onInput;
+  final double horizontalPadding;
+
+  const _TextKeyboardRow({
+    required this.visible,
+    required this.keys,
+    required this.onInput,
+    this.horizontalPadding = 0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: horizontalPadding,
+        right: horizontalPadding,
+        bottom: 8,
+      ),
+      child: Row(
+        children: [
+          for (var index = 0; index < keys.length; index++) ...[
+            Expanded(
+              child: _KeyboardWaveItem(
+                visible: visible,
+                index: index,
+                child: _NumPadButton(
+                  label: keys[index],
+                  onPressed: () => onInput(keys[index]),
+                ),
+              ),
+            ),
+            if (index < keys.length - 1) const SizedBox(width: 8),
+          ],
+        ],
       ),
     );
   }
@@ -501,6 +946,76 @@ class _NumPadRow extends StatelessWidget {
             if (index < children.length - 1) const SizedBox(width: 8),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _KeyboardWaveItem extends StatefulWidget {
+  final bool visible;
+  final int index;
+  final Widget child;
+
+  const _KeyboardWaveItem({
+    required this.visible,
+    required this.index,
+    required this.child,
+  });
+
+  @override
+  State<_KeyboardWaveItem> createState() => _KeyboardWaveItemState();
+}
+
+class _KeyboardWaveItemState extends State<_KeyboardWaveItem> {
+  Timer? _timer;
+  late bool _show;
+
+  @override
+  void initState() {
+    super.initState();
+    _show = widget.visible;
+    if (widget.visible) _scheduleShow();
+  }
+
+  @override
+  void didUpdateWidget(covariant _KeyboardWaveItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.visible == widget.visible) return;
+
+    _timer?.cancel();
+    if (!widget.visible) {
+      setState(() => _show = false);
+      return;
+    }
+
+    _show = false;
+    _scheduleShow();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleShow() {
+    final delay = Duration(milliseconds: widget.index * 12);
+    _timer = Timer(delay, () {
+      if (mounted) setState(() => _show = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+      opacity: _show ? 1 : 0,
+      duration: const Duration(milliseconds: 90),
+      curve: Curves.easeOutCubic,
+      child: AnimatedSlide(
+        offset: _show ? Offset.zero : const Offset(-0.04, 0),
+        duration: const Duration(milliseconds: 90),
+        curve: Curves.easeOutCubic,
+        child: widget.child,
       ),
     );
   }
@@ -550,29 +1065,31 @@ class _NumPadButton extends StatelessWidget {
       return foregroundColor;
     });
 
-    final child = Row(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        if (icon != null) ...[
-          Icon(icon, size: 18, color: foregroundColor),
-          const SizedBox(width: 6),
-        ],
-        Flexible(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontSize: compactText ? 13 : 18,
-                  fontWeight: FontWeight.w800,
-                  color: foregroundColor,
+    final iconOnly = icon != null && label.isEmpty;
+    final child = iconOnly
+        ? Center(child: Icon(icon, size: 18))
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 18),
+                const SizedBox(width: 6),
+              ],
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: compactText ? 13 : 18,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-          ),
-        ),
-      ],
-    );
+              ),
+            ],
+          );
 
     final style = ButtonStyle(
       padding: const WidgetStatePropertyAll(EdgeInsets.zero),
@@ -624,33 +1141,6 @@ class _NumPadButton extends StatelessWidget {
       height: 52,
       width: double.infinity,
       child: button,
-    );
-  }
-}
-
-class _NumPadIconButton extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onPressed;
-
-  const _NumPadIconButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(8),
-        child: SizedBox.square(
-          dimension: 32,
-          child: Icon(icon, size: 19, color: Colors.grey.shade700),
-        ),
-      ),
     );
   }
 }
