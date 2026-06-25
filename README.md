@@ -20,6 +20,7 @@ O objetivo da `monalisa_gallery` e padronizar visual, comportamento, nomes de pr
 - [Tooltips](#tooltips)
 - [Imagens](#imagens)
 - [Layout](#layout)
+  - [MTabWidget](#mtabwidget)
 - [Boas praticas](#boas-praticas)
 
 ## Instalacao
@@ -987,6 +988,47 @@ Estado publico:
 
 ## Layout
 
+### MTabWidget
+
+Componente de abas com conteudo fixo em altura, icone, label e cores ativas configuraveis por aba.
+
+```dart
+MTabWidget(
+  contentHeight: 360,
+  items: const [
+    MTabWidgetItem(
+      label: 'Dados',
+      icon: Icons.person_outline,
+      activeBackgroundColor: Color(0xFF155AA8),
+      activeForegroundColor: Colors.white,
+      child: Center(child: Text('Conteudo de dados')),
+    ),
+    MTabWidgetItem(
+      label: 'Historico',
+      icon: Icons.history,
+      activeBackgroundColor: Color(0xFF16A34A),
+      activeForegroundColor: Colors.white,
+      child: Center(child: Text('Conteudo do historico')),
+    ),
+  ],
+);
+```
+
+Principais propriedades do `MTabWidget`:
+
+- `items`: lista obrigatoria de abas.
+- `contentHeight`: altura da area exibida pelo `TabBarView`.
+- `initialIndex`: indice inicial selecionado.
+- `padding`: espacamento externo aplicado ao componente.
+
+Principais propriedades do `MTabWidgetItem`:
+
+- `label`: texto exibido na aba.
+- `icon`: icone exibido antes do texto.
+- `child`: conteudo renderizado quando a aba estiver selecionada.
+- `activeBackgroundColor`: cor de fundo da aba selecionada. O padrao e `Color(0xFF155AA8)`.
+- `activeForegroundColor`: cor do texto e do icone quando a aba estiver selecionada. O padrao e `Colors.white`.
+
 ### MFieldAction
 
 Wrapper para alinhar botoes ou acoes laterais com o corpo de inputs que possuem `label`.
@@ -1124,4 +1166,4 @@ Componentes exportados:
 - Botoes: `MButton`, `MButton.outlined`, `MIconButton`, `MActionButton`
 - Toggles e selecoes: `MToggleButton`, `MCheck`, `MSwitchToggle`, `MStatusToggle`
 - Feedback: `MAlert`, `MNotificationCard`, `MLoadingOverlay`, `MConfirmDialog`, `MToolTip`
-- Layout: `MFieldAction`
+- Layout: `MFieldAction`, `MTabWidget`, `MTabWidgetItem`
