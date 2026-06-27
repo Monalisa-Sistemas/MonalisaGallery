@@ -17,6 +17,7 @@ O objetivo da `monalisa_gallery` e padronizar visual, comportamento, nomes de pr
 - [Toggles](#toggles)
 - [Alertas](#alertas)
 - [Dialogs](#dialogs)
+  - [MGenericDialog](#mgenericdialog)
 - [Tooltips](#tooltips)
 - [Imagens](#imagens)
 - [Layout](#layout)
@@ -897,6 +898,101 @@ Principais propriedades/metodos:
 - `show(...)`
 - `confirma(...)`
 
+### MGenericDialog
+
+Dialog padrao para formularios com header de icone/titulo/subtitulo e footer de acoes. Ideal para substituir dialogs customizados em fluxos de edicao, confirmacao de dados e operacoes administrativas.
+
+O dialog exibe:
+
+- **Header**: icone com fundo colorido, titulo em destaque, subtitulo e botao de fechar.
+- **Corpo**: qualquer widget passado via `child`, com scroll automatico quando o conteudo ultrapassar a altura disponivel.
+- **Footer**: botao "Fechar" (outlined, vermelho) e botao de confirmacao com icone, label e cor configurados.
+
+Quando `confirmLoading` e `true`, os botoes de fechar e confirmar ficam desabilitados automaticamente.
+
+#### Uso basico
+
+```dart
+showDialog(
+  context: context,
+  builder: (_) => MGenericDialog(
+    icon: Icons.lock_person_outlined,
+    iconColor: Colors.indigo,
+    iconBackground: Colors.indigo.withValues(alpha: 0.10),
+    title: 'Alterar Senha',
+    subtitle: 'Trocar senha de operador',
+    confirmIcon: Icons.check,
+    confirmLabel: 'CONFIRMAR',
+    confirmColor: MonalisaColors.success,
+    onClose: () => Navigator.pop(context),
+    onConfirm: _confirmar,
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          MTextInput(label: 'Senha atual', obscureText: true),
+          const SizedBox(height: 16),
+          MTextInput(label: 'Nova senha', obscureText: true),
+        ],
+      ),
+    ),
+  ),
+);
+```
+
+#### Com loading no botao de confirmacao
+
+Controle o estado de `confirmLoading` externamente via `StatefulWidget` ou provider. Enquanto `true`, ambos os botoes ficam bloqueados e o botao de confirmar exibe um indicador de progresso.
+
+```dart
+bool salvando = false;
+
+showDialog(
+  context: context,
+  builder: (_) => StatefulBuilder(
+    builder: (context, setState) => MGenericDialog(
+      icon: Icons.edit_outlined,
+      iconColor: MonalisaColors.primary,
+      iconBackground: MonalisaColors.primary.withValues(alpha: 0.10),
+      title: 'Editar registro',
+      subtitle: 'Atualize os campos e confirme',
+      confirmIcon: Icons.save,
+      confirmLabel: 'SALVAR',
+      confirmColor: MonalisaColors.primary,
+      confirmLoading: salvando,
+      onClose: () => Navigator.pop(context),
+      onConfirm: () async {
+        setState(() => salvando = true);
+        await _salvar();
+        if (context.mounted) Navigator.pop(context);
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: MTextInput(label: 'Nome'),
+      ),
+    ),
+  ),
+);
+```
+
+#### Propriedades
+
+| Propriedade | Tipo | Obrigatoria | Descricao |
+|---|---|---|---|
+| `icon` | `IconData` | sim | Icone exibido no header. |
+| `iconColor` | `Color` | sim | Cor do icone. |
+| `iconBackground` | `Color` | sim | Cor de fundo do container do icone. |
+| `title` | `String` | sim | Titulo em negrito no header. |
+| `subtitle` | `String` | sim | Subtitulo abaixo do titulo. |
+| `child` | `Widget` | sim | Conteudo central do dialog. |
+| `confirmIcon` | `IconData` | sim | Icone do botao de confirmar. |
+| `confirmLabel` | `String` | sim | Texto do botao de confirmar. |
+| `confirmColor` | `Color` | sim | Cor de fundo do botao de confirmar. |
+| `onClose` | `VoidCallback?` | sim | Callback do botao Fechar e do X do header. |
+| `onConfirm` | `VoidCallback?` | sim | Callback do botao de confirmar. |
+| `confirmLoading` | `bool` | nao | Ativa loading e bloqueia botoes. Padrao: `false`. |
+| `width` | `double` | nao | Largura do dialog. Padrao: `520.0`. |
+
 ## Tooltips
 
 ### MToolTip
@@ -1166,4 +1262,4 @@ Componentes exportados:
 - Botoes: `MButton`, `MButton.outlined`, `MIconButton`, `MActionButton`
 - Toggles e selecoes: `MToggleButton`, `MCheck`, `MSwitchToggle`, `MStatusToggle`
 - Feedback: `MAlert`, `MNotificationCard`, `MLoadingOverlay`, `MConfirmDialog`, `MToolTip`
-- Layout: `MFieldAction`, `MTabWidget`, `MTabWidgetItem`
+- Layout: `MFieldAction`, `MTabWidget`, `MTabWidgetItem`, `MGenericDialog`

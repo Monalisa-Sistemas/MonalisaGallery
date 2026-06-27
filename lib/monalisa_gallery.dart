@@ -5,6 +5,7 @@ export 'src/feedback/monalisa_loading_overlay.dart';
 export 'src/feedback/monalisa_tooltip.dart';
 export 'src/inputs/monalisa_inputs.dart';
 export 'src/inputs/monalisa_numpad.dart';
+export 'src/layout/monalisa_generic_dialog.dart';
 export 'src/layout/monalisa_layout.dart';
 export 'src/layout/monalisa_tab_widget.dart';
 export 'src/selection/monalisa_selection.dart';
