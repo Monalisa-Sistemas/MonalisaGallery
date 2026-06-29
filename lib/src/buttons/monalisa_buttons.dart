@@ -92,6 +92,9 @@ class _MButtonState extends State<MButton> {
     final labelFontWeight = defaultTargetPlatform == TargetPlatform.android
         ? FontWeight.w800
         : FontWeight.w700;
+    final isAndroid = defaultTargetPlatform == TargetPlatform.android;
+    final verticalPadding = isAndroid ? 12.0 : 15.0;
+    final minimumHeight = isAndroid ? 42.0 : 46.0;
 
     final child = Stack(
       alignment: Alignment.center,
@@ -131,10 +134,10 @@ class _MButtonState extends State<MButton> {
     );
 
     final style = ButtonStyle(
-      padding: const WidgetStatePropertyAll(
-        EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+      padding: WidgetStatePropertyAll(
+        EdgeInsets.symmetric(horizontal: 18, vertical: verticalPadding),
       ),
-      minimumSize: const WidgetStatePropertyAll(Size(0, 46)),
+      minimumSize: WidgetStatePropertyAll(Size(0, minimumHeight)),
       shape: WidgetStatePropertyAll(
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
