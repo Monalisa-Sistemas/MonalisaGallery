@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 enum MButtonVariant { filled, outlined, text }
@@ -88,6 +89,9 @@ class _MButtonState extends State<MButton> {
             : theme.colorScheme.primary);
     final hoverOverlay = fg.withValues(alpha: 0.10);
     final pressedOverlay = fg.withValues(alpha: 0.16);
+    final labelFontWeight = defaultTargetPlatform == TargetPlatform.android
+        ? FontWeight.w800
+        : FontWeight.w700;
 
     final child = Stack(
       alignment: Alignment.center,
@@ -108,7 +112,7 @@ class _MButtonState extends State<MButton> {
                   widget.label,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+                  style: TextStyle(fontWeight: labelFontWeight),
                 ),
               ),
             ],
