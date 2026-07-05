@@ -453,6 +453,21 @@ MNumPad.show(
 );
 ```
 
+#### Abrir ancorado embaixo
+
+Use `bottomAnchored: true` para abrir o teclado sobreposto na parte inferior da tela, ocupando toda a largura disponivel sem empurrar o layout da pagina.
+
+```dart
+MNumPad.show(
+  context,
+  controller: codigoController,
+  targetKey: codigoFieldKey,
+  bottomAnchored: true,
+);
+```
+
+Quando aberto como popup flutuante, o usuario tambem pode tocar no botao de mover para fixar o teclado embaixo. Arrastar esse mesmo botao reposiciona o teclado livremente na tela.
+
 #### Capturando confirmacao ou cancelamento
 
 ```dart
@@ -478,6 +493,7 @@ if (result == MNumPadResult.canceled) {
 - `title`: titulo exibido no topo do teclado.
 - `targetKey`: chave do widget que deve receber o destaque visual no overlay.
 - `initialMode`: modo inicial do teclado. Use `MNumPadMode.numeric` ou `MNumPadMode.text`.
+- `bottomAnchored`: abre o teclado ancorado na parte inferior da tela, ocupando toda a largura disponivel sem alterar o layout abaixo.
 - `onConfirm`: chamado ao confirmar.
 - `onCancel`: chamado ao cancelar ou clicar fora do popup.
 - `onClear`: mantido por compatibilidade de API.

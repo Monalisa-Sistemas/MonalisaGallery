@@ -14,6 +14,7 @@ class MNumPad extends StatefulWidget {
   final String title;
   final GlobalKey? targetKey;
   final MNumPadMode initialMode;
+  final bool bottomAnchored;
   final VoidCallback? onConfirm;
   final VoidCallback? onCancel;
   final VoidCallback? onClear;
@@ -24,6 +25,7 @@ class MNumPad extends StatefulWidget {
     this.title = 'Teclado numerico',
     this.targetKey,
     this.initialMode = MNumPadMode.numeric,
+    this.bottomAnchored = false,
     this.onConfirm,
     this.onCancel,
     this.onClear,
@@ -35,6 +37,7 @@ class MNumPad extends StatefulWidget {
     String title = 'Teclado numerico',
     GlobalKey? targetKey,
     MNumPadMode initialMode = MNumPadMode.numeric,
+    bool bottomAnchored = false,
     VoidCallback? onConfirm,
     VoidCallback? onCancel,
     VoidCallback? onClear,
@@ -52,6 +55,7 @@ class MNumPad extends StatefulWidget {
           title: title,
           targetKey: targetKey,
           initialMode: initialMode,
+          bottomAnchored: bottomAnchored,
           onConfirm: onConfirm,
           onCancel: onCancel,
           onClear: onClear,
@@ -90,12 +94,15 @@ class _MNumPadState extends State<MNumPad> {
   Size _panelSize = const Size(_numericPanelWidth, 392);
   Rect? _targetRect;
   late MNumPadMode _mode;
+  late bool _bottomAnchored;
   bool _keyboardVisible = true;
+  bool _draggingHandle = false;
 
   @override
   void initState() {
     super.initState();
     _mode = widget.initialMode;
+    _bottomAnchored = widget.bottomAnchored;
   }
 
   @override
@@ -126,21 +133,27 @@ class _MNumPadState extends State<MNumPad> {
       return;
     }
 
-    final screenSize = MediaQuery.sizeOf(context);
     final nextPanelSize = renderBox.size;
-    final nextOffset = _offset == null
-        ? Offset(
-            (screenSize.width - nextPanelSize.width) / 2,
-            (screenSize.height - nextPanelSize.height) / 2,
-          )
-        : _clampOffset(_offset!, screenSize, nextPanelSize);
+    Offset? nextOffset;
+
+    if (!_bottomAnchored) {
+      final screenSize = MediaQuery.sizeOf(context);
+      nextOffset = _offset == null
+          ? Offset(
+              (screenSize.width - nextPanelSize.width) / 2,
+              (screenSize.height - nextPanelSize.height) / 2,
+            )
+          : _clampOffset(_offset!, screenSize, nextPanelSize);
+    }
+
+    final offsetChanged = !_bottomAnchored && _offset != nextOffset;
 
     if (_panelSize != nextPanelSize ||
-        _offset != nextOffset ||
+        offsetChanged ||
         _targetRect != nextTargetRect) {
       setState(() {
         _panelSize = nextPanelSize;
-        _offset = nextOffset;
+        if (!_bottomAnchored) _offset = nextOffset;
         _targetRect = nextTargetRect;
       });
     }
@@ -176,12 +189,50 @@ class _MNumPadState extends State<MNumPad> {
     );
   }
 
+  double _floatingWidth(Size screenSize) {
+    final desiredWidth =
+        _mode == MNumPadMode.numeric ? _numericPanelWidth : _textPanelWidth;
+
+    return math
+        .min(desiredWidth, math.max(260.0, screenSize.width - 24))
+        .toDouble();
+  }
+
   void _move(DragUpdateDetails details) {
     final screenSize = MediaQuery.sizeOf(context);
-    final nextOffset = (_offset ?? Offset.zero) + details.delta;
+    final floatingWidth = _floatingWidth(screenSize);
+    final dragPanelSize = _bottomAnchored
+        ? Size(floatingWidth, _panelSize.height)
+        : _panelSize;
+    final currentOffset = _bottomAnchored
+        ? Offset(
+            (screenSize.width - floatingWidth) / 2,
+            screenSize.height - _panelSize.height - _panelPadding,
+          )
+        : (_offset ?? Offset.zero);
+    final nextOffset = currentOffset + details.delta;
     setState(() {
-      _offset = _clampOffset(nextOffset, screenSize, _panelSize);
+      _bottomAnchored = false;
+      _offset = _clampOffset(nextOffset, screenSize, dragPanelSize);
     });
+  }
+
+  void _startMove(DragStartDetails details) {
+    _draggingHandle = true;
+  }
+
+  void _endMove(DragEndDetails details) {
+    _draggingHandle = false;
+  }
+
+  void _cancelMove() {
+    _draggingHandle = false;
+  }
+
+  void _anchorToBottom() {
+    if (_draggingHandle || _bottomAnchored) return;
+    setState(() => _bottomAnchored = true);
+    _scheduleLayoutSync();
   }
 
   Future<void> _changeMode(MNumPadMode mode) async {
@@ -252,17 +303,38 @@ class _MNumPadState extends State<MNumPad> {
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.sizeOf(context);
-    final desiredWidth =
-        _mode == MNumPadMode.numeric ? _numericPanelWidth : _textPanelWidth;
-    final width = math
-        .min(desiredWidth, math.max(260.0, screenSize.width - 24))
-        .toDouble();
+    final width =
+        _bottomAnchored ? screenSize.width : _floatingWidth(screenSize);
     final maxHeight = math.max(300.0, screenSize.height - 24).toDouble();
     final offset = _offset ??
         Offset(
           (screenSize.width - width) / 2,
           math.max(_panelPadding, (screenSize.height - _panelSize.height) / 2),
         );
+    final panel = ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: width,
+        maxHeight: maxHeight,
+      ),
+      child: _NumPadPanel(
+        key: _panelKey,
+        width: width,
+        bottomAnchored: _bottomAnchored,
+        mode: _mode,
+        keyboardVisible: _keyboardVisible,
+        title: widget.title,
+        onModeChanged: _changeMode,
+        onAnchorToBottom: _anchorToBottom,
+        onDragStart: _startMove,
+        onDragUpdate: _move,
+        onDragEnd: _endMove,
+        onDragCancel: _cancelMove,
+        onDigit: _insert,
+        onBackspace: _backspace,
+        onCancel: _cancel,
+        onConfirm: _confirm,
+      ),
+    );
 
     return Material(
       type: MaterialType.transparency,
@@ -281,29 +353,19 @@ class _MNumPadState extends State<MNumPad> {
             ),
           ),
           if (_targetRect != null) _NumPadTargetHighlight(rect: _targetRect!),
-          Positioned(
-            left: offset.dx,
-            top: offset.dy,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: width,
-                maxHeight: maxHeight,
-              ),
-              child: _NumPadPanel(
-                key: _panelKey,
-                width: width,
-                mode: _mode,
-                keyboardVisible: _keyboardVisible,
-                title: widget.title,
-                onModeChanged: _changeMode,
-                onDragUpdate: _move,
-                onDigit: _insert,
-                onBackspace: _backspace,
-                onCancel: _cancel,
-                onConfirm: _confirm,
-              ),
+          if (_bottomAnchored)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: panel,
+            )
+          else
+            Positioned(
+              left: offset.dx,
+              top: offset.dy,
+              child: panel,
             ),
-          ),
         ],
       ),
     );
@@ -383,28 +445,38 @@ class _NumPadTargetHighlight extends StatelessWidget {
 
 class _NumPadPanel extends StatelessWidget {
   final double width;
+  final bool bottomAnchored;
   final MNumPadMode mode;
   final bool keyboardVisible;
   final String title;
   final ValueChanged<MNumPadMode> onModeChanged;
+  final VoidCallback onAnchorToBottom;
   final ValueChanged<String> onDigit;
   final VoidCallback onBackspace;
   final VoidCallback onCancel;
   final VoidCallback onConfirm;
+  final GestureDragStartCallback onDragStart;
   final GestureDragUpdateCallback onDragUpdate;
+  final GestureDragEndCallback onDragEnd;
+  final GestureDragCancelCallback onDragCancel;
 
   const _NumPadPanel({
     super.key,
     required this.width,
+    required this.bottomAnchored,
     required this.mode,
     required this.keyboardVisible,
     required this.title,
     required this.onModeChanged,
+    required this.onAnchorToBottom,
     required this.onDigit,
     required this.onBackspace,
     required this.onCancel,
     required this.onConfirm,
+    required this.onDragStart,
     required this.onDragUpdate,
+    required this.onDragEnd,
+    required this.onDragCancel,
   });
 
   @override
@@ -414,7 +486,10 @@ class _NumPadPanel extends StatelessWidget {
       color: Colors.white,
       elevation: 14,
       shadowColor: Colors.black.withValues(alpha: 0.16),
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.vertical(
+        top: const Radius.circular(10),
+        bottom: Radius.circular(bottomAnchored ? 0 : 10),
+      ),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
@@ -422,7 +497,10 @@ class _NumPadPanel extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.vertical(
+            top: const Radius.circular(10),
+            bottom: Radius.circular(bottomAnchored ? 0 : 10),
+          ),
           border: Border.all(
             color: MonalisaColors.border.withValues(alpha: 0.75),
           ),
@@ -434,9 +512,13 @@ class _NumPadPanel extends StatelessWidget {
               Row(
                 children: [
                   GestureDetector(
+                    onTap: onAnchorToBottom,
+                    onPanStart: onDragStart,
                     onPanUpdate: onDragUpdate,
+                    onPanEnd: onDragEnd,
+                    onPanCancel: onDragCancel,
                     child: Tooltip(
-                      message: 'Mover teclado',
+                      message: 'Mover ou fixar teclado embaixo',
                       child: MouseRegion(
                         cursor: SystemMouseCursors.move,
                         child: Container(
@@ -452,7 +534,9 @@ class _NumPadPanel extends StatelessWidget {
                             ),
                           ),
                           child: Icon(
-                            Icons.open_with_rounded,
+                            bottomAnchored
+                                ? Icons.keyboard_hide_outlined
+                                : Icons.open_with_rounded,
                             size: 18,
                             color: Colors.grey.shade600,
                           ),
