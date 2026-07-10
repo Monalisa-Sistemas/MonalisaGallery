@@ -15,6 +15,9 @@ class MNumPad extends StatefulWidget {
   final GlobalKey? targetKey;
   final MNumPadMode initialMode;
   final bool bottomAnchored;
+  final bool showPreview;
+  final String previewLabel;
+  final String emptyPreviewText;
   final VoidCallback? onConfirm;
   final VoidCallback? onCancel;
   final VoidCallback? onClear;
@@ -26,6 +29,9 @@ class MNumPad extends StatefulWidget {
     this.targetKey,
     this.initialMode = MNumPadMode.numeric,
     this.bottomAnchored = false,
+    this.showPreview = true,
+    this.previewLabel = 'Digitando',
+    this.emptyPreviewText = 'Nenhum valor informado',
     this.onConfirm,
     this.onCancel,
     this.onClear,
@@ -38,6 +44,9 @@ class MNumPad extends StatefulWidget {
     GlobalKey? targetKey,
     MNumPadMode initialMode = MNumPadMode.numeric,
     bool bottomAnchored = false,
+    bool showPreview = true,
+    String previewLabel = 'Digitando',
+    String emptyPreviewText = 'Nenhum valor informado',
     VoidCallback? onConfirm,
     VoidCallback? onCancel,
     VoidCallback? onClear,
@@ -56,6 +65,9 @@ class MNumPad extends StatefulWidget {
           targetKey: targetKey,
           initialMode: initialMode,
           bottomAnchored: bottomAnchored,
+          showPreview: showPreview,
+          previewLabel: previewLabel,
+          emptyPreviewText: emptyPreviewText,
           onConfirm: onConfirm,
           onCancel: onCancel,
           onClear: onClear,
@@ -95,6 +107,7 @@ class _MNumPadState extends State<MNumPad> {
   Rect? _targetRect;
   late MNumPadMode _mode;
   late bool _bottomAnchored;
+  late String _previewText;
   bool _keyboardVisible = true;
   bool _draggingHandle = false;
 
@@ -103,6 +116,24 @@ class _MNumPadState extends State<MNumPad> {
     super.initState();
     _mode = widget.initialMode;
     _bottomAnchored = widget.bottomAnchored;
+    _previewText = widget.controller.text;
+    widget.controller.addListener(_syncPreview);
+  }
+
+  @override
+  void didUpdateWidget(covariant MNumPad oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller == widget.controller) return;
+
+    oldWidget.controller.removeListener(_syncPreview);
+    _previewText = widget.controller.text;
+    widget.controller.addListener(_syncPreview);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_syncPreview);
+    super.dispose();
   }
 
   @override
@@ -119,6 +150,11 @@ class _MNumPadState extends State<MNumPad> {
         if (mounted) _syncLayout();
       },
     );
+  }
+
+  void _syncPreview() {
+    if (!mounted || _previewText == widget.controller.text) return;
+    setState(() => _previewText = widget.controller.text);
   }
 
   void _syncLayout() {
@@ -322,6 +358,10 @@ class _MNumPadState extends State<MNumPad> {
         bottomAnchored: _bottomAnchored,
         mode: _mode,
         keyboardVisible: _keyboardVisible,
+        showPreview: widget.showPreview,
+        previewLabel: widget.previewLabel,
+        emptyPreviewText: widget.emptyPreviewText,
+        previewText: _previewText,
         title: widget.title,
         onModeChanged: _changeMode,
         onAnchorToBottom: _anchorToBottom,
@@ -448,6 +488,10 @@ class _NumPadPanel extends StatelessWidget {
   final bool bottomAnchored;
   final MNumPadMode mode;
   final bool keyboardVisible;
+  final bool showPreview;
+  final String previewLabel;
+  final String emptyPreviewText;
+  final String previewText;
   final String title;
   final ValueChanged<MNumPadMode> onModeChanged;
   final VoidCallback onAnchorToBottom;
@@ -466,6 +510,10 @@ class _NumPadPanel extends StatelessWidget {
     required this.bottomAnchored,
     required this.mode,
     required this.keyboardVisible,
+    required this.showPreview,
+    required this.previewLabel,
+    required this.emptyPreviewText,
+    required this.previewText,
     required this.title,
     required this.onModeChanged,
     required this.onAnchorToBottom,
@@ -562,6 +610,15 @@ class _NumPadPanel extends StatelessWidget {
                   ),
                 ],
               ),
+              if (showPreview) ...[
+                const SizedBox(height: 10),
+                _NumPadPreview(
+                  label: previewLabel,
+                  value: previewText,
+                  emptyText: emptyPreviewText,
+                  mode: mode,
+                ),
+              ],
               const SizedBox(height: 14),
               AnimatedOpacity(
                 opacity: keyboardVisible ? 1 : 0,
@@ -612,6 +669,90 @@ class _NumPadPanel extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _NumPadPreview extends StatelessWidget {
+  final String label;
+  final String value;
+  final String emptyText;
+  final MNumPadMode mode;
+
+  const _NumPadPreview({
+    required this.label,
+    required this.value,
+    required this.emptyText,
+    required this.mode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+    final hasValue = value.isNotEmpty;
+    final alignment =
+        mode == MNumPadMode.numeric ? TextAlign.right : TextAlign.left;
+    final crossAxisAlignment = mode == MNumPadMode.numeric
+        ? CrossAxisAlignment.end
+        : CrossAxisAlignment.start;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOutCubic,
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: MonalisaColors.surfaceSoft,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: hasValue
+              ? primary.withValues(alpha: 0.24)
+              : MonalisaColors.border.withValues(alpha: 0.55),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: crossAxisAlignment,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: mode == MNumPadMode.numeric
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
+            children: [
+              const Icon(
+                Icons.visibility_outlined,
+                size: 13,
+                color: MonalisaColors.textMuted,
+              ),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: alignment,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: MonalisaColors.textMuted,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            hasValue ? value : emptyText,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: alignment,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: hasValue ? MonalisaColors.text : MonalisaColors.textMuted,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
       ),
     );
   }

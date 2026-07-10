@@ -468,6 +468,29 @@ MNumPad.show(
 
 Quando aberto como popup flutuante, o usuario tambem pode tocar no botao de mover para fixar o teclado embaixo. Arrastar esse mesmo botao reposiciona o teclado livremente na tela.
 
+#### Preview do valor digitado
+
+Por padrao, o teclado mostra um preview interno com o conteudo atual do `controller`. Isso ajuda o operador a conferir o que esta digitando mesmo quando o teclado cobre o campo original.
+
+```dart
+MNumPad.show(
+  context,
+  controller: cpfController,
+  title: 'Digite o CPF',
+  previewLabel: 'CPF',
+);
+```
+
+Para ocultar o preview:
+
+```dart
+MNumPad.show(
+  context,
+  controller: cpfController,
+  showPreview: false,
+);
+```
+
 #### Capturando confirmacao ou cancelamento
 
 ```dart
@@ -494,6 +517,9 @@ if (result == MNumPadResult.canceled) {
 - `targetKey`: chave do widget que deve receber o destaque visual no overlay.
 - `initialMode`: modo inicial do teclado. Use `MNumPadMode.numeric` ou `MNumPadMode.text`.
 - `bottomAnchored`: abre o teclado ancorado na parte inferior da tela, ocupando toda a largura disponivel sem alterar o layout abaixo.
+- `showPreview`: exibe ou oculta o preview interno do valor digitado. Padrao: `true`.
+- `previewLabel`: texto pequeno exibido acima do valor no preview. Padrao: `Digitando`.
+- `emptyPreviewText`: texto exibido no preview quando o controller esta vazio. Padrao: `Nenhum valor informado`.
 - `onConfirm`: chamado ao confirmar.
 - `onCancel`: chamado ao cancelar ou clicar fora do popup.
 - `onClear`: mantido por compatibilidade de API.
