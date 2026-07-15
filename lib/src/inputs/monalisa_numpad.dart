@@ -1305,20 +1305,21 @@ class _NumPadButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = this.backgroundColor ?? Colors.white;
+    final isNeutralButton = this.backgroundColor == null;
+    final backgroundColor = this.backgroundColor ?? MonalisaColors.surfaceSoft;
     final foregroundColor = this.foregroundColor ?? MonalisaColors.text;
     final primary = Theme.of(context).colorScheme.primary;
-    final borderColor = this.backgroundColor == null
-        ? MonalisaColors.border.withValues(alpha: 0.48)
+    final borderColor = isNeutralButton
+        ? MonalisaColors.border.withValues(alpha: 0.86)
         : backgroundColor;
-    final hoverOverlay = this.backgroundColor == null
-        ? primary.withValues(alpha: 0.045)
-        : foregroundColor.withValues(alpha: 0.10);
-    final pressedOverlay = this.backgroundColor == null
+    final hoverOverlay = isNeutralButton
         ? primary.withValues(alpha: 0.08)
+        : foregroundColor.withValues(alpha: 0.10);
+    final pressedOverlay = isNeutralButton
+        ? primary.withValues(alpha: 0.14)
         : foregroundColor.withValues(alpha: 0.16);
-    final hoverBorderColor = this.backgroundColor == null
-        ? primary.withValues(alpha: 0.55)
+    final hoverBorderColor = isNeutralButton
+        ? primary.withValues(alpha: 0.75)
         : backgroundColor;
     final foreground = WidgetStateProperty.resolveWith<Color>((states) {
       if (states.contains(WidgetState.hovered) ||
@@ -1372,19 +1373,42 @@ class _NumPadButton extends StatelessWidget {
       mouseCursor: const WidgetStatePropertyAll(SystemMouseCursors.click),
     );
 
-    final button = backgroundColor == Colors.white
+    final button = isNeutralButton
         ? OutlinedButton(
             onPressed: onPressed,
             style: style.copyWith(
-              backgroundColor: const WidgetStatePropertyAll(Colors.white),
+              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.pressed)) {
+                  return primary.withValues(alpha: 0.08);
+                }
+                if (states.contains(WidgetState.hovered) ||
+                    states.contains(WidgetState.focused)) {
+                  return Colors.white;
+                }
+                return backgroundColor;
+              }),
               foregroundColor: foreground,
               side: WidgetStateProperty.resolveWith((states) {
                 if (states.contains(WidgetState.hovered) ||
                     states.contains(WidgetState.focused)) {
-                  return BorderSide(color: hoverBorderColor);
+                  return BorderSide(color: hoverBorderColor, width: 1.35);
                 }
-                return BorderSide(color: borderColor);
+                if (states.contains(WidgetState.pressed)) {
+                  return BorderSide(color: primary, width: 1.45);
+                }
+                return BorderSide(color: borderColor, width: 1.15);
               }),
+              elevation: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.pressed)) return 0;
+                if (states.contains(WidgetState.hovered) ||
+                    states.contains(WidgetState.focused)) {
+                  return 2;
+                }
+                return 1;
+              }),
+              shadowColor: WidgetStatePropertyAll(
+                Colors.black.withValues(alpha: 0.12),
+              ),
             ),
             child: child,
           )
