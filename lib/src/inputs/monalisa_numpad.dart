@@ -239,6 +239,12 @@ class _MNumPadState extends State<MNumPad> {
   }
 
   double _rightWidth(Size screenSize) {
+    if (_mode == MNumPadMode.text) {
+      return math
+          .min(_textPanelWidth, math.max(280.0, screenSize.width - 32))
+          .toDouble();
+    }
+
     return math
         .min(_rightPanelWidth, math.max(280.0, screenSize.width - 32))
         .toDouble();
