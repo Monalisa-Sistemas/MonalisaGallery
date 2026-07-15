@@ -9,12 +9,14 @@ enum MNumPadResult { confirmed, canceled }
 
 enum MNumPadMode { numeric, text }
 
+enum MNumPadPosition { floating, bottom, right }
+
 class MNumPad extends StatefulWidget {
   final TextEditingController controller;
   final String title;
   final GlobalKey? targetKey;
   final MNumPadMode initialMode;
-  final bool bottomAnchored;
+  final MNumPadPosition position;
   final bool showPreview;
   final String previewLabel;
   final String emptyPreviewText;
@@ -28,7 +30,7 @@ class MNumPad extends StatefulWidget {
     this.title = 'Teclado numerico',
     this.targetKey,
     this.initialMode = MNumPadMode.numeric,
-    this.bottomAnchored = false,
+    this.position = MNumPadPosition.floating,
     this.showPreview = true,
     this.previewLabel = 'Digitando',
     this.emptyPreviewText = 'Nenhum valor informado',
@@ -43,7 +45,7 @@ class MNumPad extends StatefulWidget {
     String title = 'Teclado numerico',
     GlobalKey? targetKey,
     MNumPadMode initialMode = MNumPadMode.numeric,
-    bool bottomAnchored = false,
+    MNumPadPosition position = MNumPadPosition.floating,
     bool showPreview = true,
     String previewLabel = 'Digitando',
     String emptyPreviewText = 'Nenhum valor informado',
@@ -64,7 +66,7 @@ class MNumPad extends StatefulWidget {
           title: title,
           targetKey: targetKey,
           initialMode: initialMode,
-          bottomAnchored: bottomAnchored,
+          position: position,
           showPreview: showPreview,
           previewLabel: previewLabel,
           emptyPreviewText: emptyPreviewText,
@@ -98,6 +100,7 @@ class MNumPad extends StatefulWidget {
 class _MNumPadState extends State<MNumPad> {
   static const double _numericPanelWidth = 328;
   static const double _textPanelWidth = 640;
+  static const double _rightPanelWidth = 360;
   static const double _panelPadding = 16;
 
   final _panelKey = GlobalKey();
@@ -106,7 +109,7 @@ class _MNumPadState extends State<MNumPad> {
   Size _panelSize = const Size(_numericPanelWidth, 392);
   Rect? _targetRect;
   late MNumPadMode _mode;
-  late bool _bottomAnchored;
+  late MNumPadPosition _position;
   late String _previewText;
   bool _keyboardVisible = true;
   bool _draggingHandle = false;
@@ -115,7 +118,7 @@ class _MNumPadState extends State<MNumPad> {
   void initState() {
     super.initState();
     _mode = widget.initialMode;
-    _bottomAnchored = widget.bottomAnchored;
+    _position = widget.position;
     _previewText = widget.controller.text;
     widget.controller.addListener(_syncPreview);
   }
@@ -172,7 +175,7 @@ class _MNumPadState extends State<MNumPad> {
     final nextPanelSize = renderBox.size;
     Offset? nextOffset;
 
-    if (!_bottomAnchored) {
+    if (_position == MNumPadPosition.floating) {
       final screenSize = MediaQuery.sizeOf(context);
       nextOffset = _offset == null
           ? Offset(
@@ -182,14 +185,15 @@ class _MNumPadState extends State<MNumPad> {
           : _clampOffset(_offset!, screenSize, nextPanelSize);
     }
 
-    final offsetChanged = !_bottomAnchored && _offset != nextOffset;
+    final offsetChanged =
+        _position == MNumPadPosition.floating && _offset != nextOffset;
 
     if (_panelSize != nextPanelSize ||
         offsetChanged ||
         _targetRect != nextTargetRect) {
       setState(() {
         _panelSize = nextPanelSize;
-        if (!_bottomAnchored) _offset = nextOffset;
+        if (_position == MNumPadPosition.floating) _offset = nextOffset;
         _targetRect = nextTargetRect;
       });
     }
@@ -234,13 +238,28 @@ class _MNumPadState extends State<MNumPad> {
         .toDouble();
   }
 
+  double _rightWidth(Size screenSize) {
+    return math
+        .min(_rightPanelWidth, math.max(280.0, screenSize.width - 32))
+        .toDouble();
+  }
+
+  MNumPadPosition _effectivePosition(Size screenSize) {
+    if (_position == MNumPadPosition.right && screenSize.width < 720) {
+      return MNumPadPosition.bottom;
+    }
+
+    return _position;
+  }
+
   void _move(DragUpdateDetails details) {
     final screenSize = MediaQuery.sizeOf(context);
     final floatingWidth = _floatingWidth(screenSize);
-    final dragPanelSize = _bottomAnchored
+    final wasDocked = _position != MNumPadPosition.floating;
+    final dragPanelSize = wasDocked
         ? Size(floatingWidth, _panelSize.height)
         : _panelSize;
-    final currentOffset = _bottomAnchored
+    final currentOffset = wasDocked
         ? Offset(
             (screenSize.width - floatingWidth) / 2,
             screenSize.height - _panelSize.height - _panelPadding,
@@ -248,7 +267,7 @@ class _MNumPadState extends State<MNumPad> {
         : (_offset ?? Offset.zero);
     final nextOffset = currentOffset + details.delta;
     setState(() {
-      _bottomAnchored = false;
+      _position = MNumPadPosition.floating;
       _offset = _clampOffset(nextOffset, screenSize, dragPanelSize);
     });
   }
@@ -266,8 +285,8 @@ class _MNumPadState extends State<MNumPad> {
   }
 
   void _anchorToBottom() {
-    if (_draggingHandle || _bottomAnchored) return;
-    setState(() => _bottomAnchored = true);
+    if (_draggingHandle || _position == MNumPadPosition.bottom) return;
+    setState(() => _position = MNumPadPosition.bottom);
     _scheduleLayoutSync();
   }
 
@@ -339,9 +358,15 @@ class _MNumPadState extends State<MNumPad> {
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.sizeOf(context);
-    final width =
-        _bottomAnchored ? screenSize.width : _floatingWidth(screenSize);
-    final maxHeight = math.max(300.0, screenSize.height - 24).toDouble();
+    final position = _effectivePosition(screenSize);
+    final width = switch (position) {
+      MNumPadPosition.bottom => screenSize.width,
+      MNumPadPosition.right => _rightWidth(screenSize),
+      MNumPadPosition.floating => _floatingWidth(screenSize),
+    };
+    final maxHeight = position == MNumPadPosition.right
+        ? math.max(300.0, screenSize.height - (_panelPadding * 2)).toDouble()
+        : math.max(300.0, screenSize.height - 24).toDouble();
     final offset = _offset ??
         Offset(
           (screenSize.width - width) / 2,
@@ -355,7 +380,7 @@ class _MNumPadState extends State<MNumPad> {
       child: _NumPadPanel(
         key: _panelKey,
         width: width,
-        bottomAnchored: _bottomAnchored,
+        position: position,
         mode: _mode,
         keyboardVisible: _keyboardVisible,
         showPreview: widget.showPreview,
@@ -375,6 +400,24 @@ class _MNumPadState extends State<MNumPad> {
         onConfirm: _confirm,
       ),
     );
+    final positionedPanel = switch (position) {
+      MNumPadPosition.bottom => Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: panel,
+        ),
+      MNumPadPosition.right => Positioned(
+          right: _panelPadding,
+          bottom: _panelPadding,
+          child: panel,
+        ),
+      MNumPadPosition.floating => Positioned(
+          left: offset.dx,
+          top: offset.dy,
+          child: panel,
+        ),
+    };
 
     return Material(
       type: MaterialType.transparency,
@@ -393,19 +436,7 @@ class _MNumPadState extends State<MNumPad> {
             ),
           ),
           if (_targetRect != null) _NumPadTargetHighlight(rect: _targetRect!),
-          if (_bottomAnchored)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: panel,
-            )
-          else
-            Positioned(
-              left: offset.dx,
-              top: offset.dy,
-              child: panel,
-            ),
+          positionedPanel,
         ],
       ),
     );
@@ -485,7 +516,7 @@ class _NumPadTargetHighlight extends StatelessWidget {
 
 class _NumPadPanel extends StatelessWidget {
   final double width;
-  final bool bottomAnchored;
+  final MNumPadPosition position;
   final MNumPadMode mode;
   final bool keyboardVisible;
   final bool showPreview;
@@ -507,7 +538,7 @@ class _NumPadPanel extends StatelessWidget {
   const _NumPadPanel({
     super.key,
     required this.width,
-    required this.bottomAnchored,
+    required this.position,
     required this.mode,
     required this.keyboardVisible,
     required this.showPreview,
@@ -530,13 +561,14 @@ class _NumPadPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isBottomPosition = position == MNumPadPosition.bottom;
     return Material(
       color: Colors.white,
       elevation: 14,
       shadowColor: Colors.black.withValues(alpha: 0.16),
       borderRadius: BorderRadius.vertical(
         top: const Radius.circular(10),
-        bottom: Radius.circular(bottomAnchored ? 0 : 10),
+        bottom: Radius.circular(isBottomPosition ? 0 : 10),
       ),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
@@ -547,7 +579,7 @@ class _NumPadPanel extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.vertical(
             top: const Radius.circular(10),
-            bottom: Radius.circular(bottomAnchored ? 0 : 10),
+            bottom: Radius.circular(isBottomPosition ? 0 : 10),
           ),
           border: Border.all(
             color: MonalisaColors.border.withValues(alpha: 0.75),
@@ -582,7 +614,7 @@ class _NumPadPanel extends StatelessWidget {
                             ),
                           ),
                           child: Icon(
-                            bottomAnchored
+                            position == MNumPadPosition.bottom
                                 ? Icons.keyboard_hide_outlined
                                 : Icons.open_with_rounded,
                             size: 18,

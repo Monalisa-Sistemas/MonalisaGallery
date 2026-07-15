@@ -453,16 +453,20 @@ MNumPad.show(
 );
 ```
 
-#### Abrir ancorado embaixo
+#### Posicionamento do teclado
 
-Use `bottomAnchored: true` para abrir o teclado sobreposto na parte inferior da tela, ocupando toda a largura disponivel sem empurrar o layout da pagina.
+Use `position` para controlar onde o teclado abre:
+
+- `MNumPadPosition.floating`: popup flutuante reposicionavel. E o padrao.
+- `MNumPadPosition.bottom`: teclado ancorado na parte inferior, ocupando a largura disponivel.
+- `MNumPadPosition.right`: teclado compacto no canto inferior direito, com margem da borda.
 
 ```dart
 MNumPad.show(
   context,
   controller: codigoController,
   targetKey: codigoFieldKey,
-  bottomAnchored: true,
+  position: MNumPadPosition.right,
 );
 ```
 
@@ -516,7 +520,7 @@ if (result == MNumPadResult.canceled) {
 - `title`: titulo exibido no topo do teclado.
 - `targetKey`: chave do widget que deve receber o destaque visual no overlay.
 - `initialMode`: modo inicial do teclado. Use `MNumPadMode.numeric` ou `MNumPadMode.text`.
-- `bottomAnchored`: abre o teclado ancorado na parte inferior da tela, ocupando toda a largura disponivel sem alterar o layout abaixo.
+- `position`: posicao inicial do teclado. Use `MNumPadPosition.floating`, `MNumPadPosition.bottom` ou `MNumPadPosition.right`.
 - `showPreview`: exibe ou oculta o preview interno do valor digitado. Padrao: `true`.
 - `previewLabel`: texto pequeno exibido acima do valor no preview. Padrao: `Digitando`.
 - `emptyPreviewText`: texto exibido no preview quando o controller esta vazio. Padrao: `Nenhum valor informado`.
@@ -1300,7 +1304,7 @@ lib/monalisa_gallery.dart
 Componentes exportados:
 
 - Tema: `MonalisaTheme`, `MonalisaColors`
-- Inputs: `MTextInput`, `MMaskedTextInput`, `MNumberInput`, `MCurrencyInput`, `MDateInput`, `MDateRangeInput`, `MDropdown`, `MSearchInput`, `MFileInput`, `MPhotoPicker`, `MNumPad`, `MNumPadMode`, `MNumPadResult`
+- Inputs: `MTextInput`, `MMaskedTextInput`, `MNumberInput`, `MCurrencyInput`, `MDateInput`, `MDateRangeInput`, `MDropdown`, `MSearchInput`, `MFileInput`, `MPhotoPicker`, `MNumPad`, `MNumPadMode`, `MNumPadPosition`, `MNumPadResult`
 - Botoes: `MButton`, `MButton.outlined`, `MIconButton`, `MActionButton`
 - Toggles e selecoes: `MToggleButton`, `MCheck`, `MSwitchToggle`, `MStatusToggle`
 - Feedback: `MAlert`, `MNotificationCard`, `MLoadingOverlay`, `MConfirmDialog`, `MToolTip`
