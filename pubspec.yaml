@@ -1,6 +1,6 @@
 name: monalisa_gallery
 description: Design system Flutter com componentes reutilizaveis da familia Monalisa.
-version: 0.3.5
+version: 0.3.11
 publish_to: none
 
 environment:

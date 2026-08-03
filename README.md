@@ -377,7 +377,7 @@ Teclado virtual reutilizavel para preencher qualquer campo conectado a um `TextE
 O componente abre em overlay, pode ser movido pelo usuario, destaca o campo em edicao com `targetKey` e possui dois modos:
 
 - `MNumPadMode.numeric`: teclado numerico.
-- `MNumPadMode.text`: teclado completo com numeros, letras em padrao QWERTY, espaco e backspace.
+- `MNumPadMode.text`: teclado completo com numeros, letras em padrao QWERTY, caracteres especiais, espaco e backspace.
 
 #### Uso basico
 
@@ -453,6 +453,11 @@ MNumPad.show(
 );
 ```
 
+No modo texto, use o botao `#+=` para trocar as letras por uma camada de
+caracteres especiais. Essa camada permite digitar `@`, `#`, `$`, `%`, `&`,
+`*`, `(`, `)`, `,`, `.`, `;`, `:`, `/`, `\`, `?`, `=`, `-`, `+`, `<` e
+`>`. Use o botao `ABC` para retornar ao teclado QWERTY.
+
 #### Posicionamento do teclado
 
 Use `position` para controlar onde o teclado abre:
@@ -494,6 +499,11 @@ MNumPad.show(
   showPreview: false,
 );
 ```
+
+Quando o `controller` ja possui texto, o teclado posiciona o cursor no final
+sem apagar o conteudo existente. Um toque no backspace remove um caractere;
+manter o botao pressionado continua removendo caracteres ate que ele seja
+solto.
 
 #### Capturando confirmacao ou cancelamento
 

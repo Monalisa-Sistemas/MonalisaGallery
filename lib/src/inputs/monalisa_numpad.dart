@@ -119,6 +119,7 @@ class _MNumPadState extends State<MNumPad> {
     super.initState();
     _mode = widget.initialMode;
     _position = widget.position;
+    _placeCursorAtEnd(widget.controller);
     _previewText = widget.controller.text;
     widget.controller.addListener(_syncPreview);
   }
@@ -129,6 +130,7 @@ class _MNumPadState extends State<MNumPad> {
     if (oldWidget.controller == widget.controller) return;
 
     oldWidget.controller.removeListener(_syncPreview);
+    _placeCursorAtEnd(widget.controller);
     _previewText = widget.controller.text;
     widget.controller.addListener(_syncPreview);
   }
@@ -158,6 +160,14 @@ class _MNumPadState extends State<MNumPad> {
   void _syncPreview() {
     if (!mounted || _previewText == widget.controller.text) return;
     setState(() => _previewText = widget.controller.text);
+  }
+
+  void _placeCursorAtEnd(TextEditingController controller) {
+    final endOffset = controller.text.length;
+    final selection = controller.selection;
+    if (selection.isCollapsed && selection.extentOffset == endOffset) return;
+
+    controller.selection = TextSelection.collapsed(offset: endOffset);
   }
 
   void _syncLayout() {
@@ -203,8 +213,7 @@ class _MNumPadState extends State<MNumPad> {
     final targetContext = widget.targetKey?.currentContext;
     final targetRenderBox = targetContext?.findRenderObject() as RenderBox?;
 
-    if (targetRenderBox == null ||
-        !targetRenderBox.hasSize) {
+    if (targetRenderBox == null || !targetRenderBox.hasSize) {
       return null;
     }
 
@@ -262,9 +271,8 @@ class _MNumPadState extends State<MNumPad> {
     final screenSize = MediaQuery.sizeOf(context);
     final floatingWidth = _floatingWidth(screenSize);
     final wasDocked = _position != MNumPadPosition.floating;
-    final dragPanelSize = wasDocked
-        ? Size(floatingWidth, _panelSize.height)
-        : _panelSize;
+    final dragPanelSize =
+        wasDocked ? Size(floatingWidth, _panelSize.height) : _panelSize;
     final currentOffset = wasDocked
         ? Offset(
             (screenSize.width - floatingWidth) / 2,
@@ -344,7 +352,8 @@ class _MNumPadState extends State<MNumPad> {
     }
 
     if (normalizedStart == 0) return;
-    final nextText = text.replaceRange(normalizedStart - 1, normalizedStart, '');
+    final nextText =
+        text.replaceRange(normalizedStart - 1, normalizedStart, '');
     widget.controller.value = TextEditingValue(
       text: nextText,
       selection: TextSelection.collapsed(offset: normalizedStart - 1),
@@ -816,7 +825,8 @@ class _NumPadModeSwitch extends StatelessWidget {
       decoration: BoxDecoration(
         color: MonalisaColors.surfaceSoft,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: MonalisaColors.border.withValues(alpha: 0.55)),
+        border:
+            Border.all(color: MonalisaColors.border.withValues(alpha: 0.55)),
       ),
       child: Stack(
         children: [
@@ -989,12 +999,8 @@ class _NumericKeyboard extends StatelessWidget {
             _KeyboardWaveItem(
               visible: visible,
               index: 2,
-              child: _NumPadButton(
-                label: '',
-                icon: Icons.backspace_outlined,
-                compactText: true,
-                foregroundColor: MonalisaColors.textMuted,
-                onPressed: onBackspace,
+              child: _RepeatingBackspaceButton(
+                onBackspace: onBackspace,
               ),
             ),
           ],
@@ -1004,7 +1010,9 @@ class _NumericKeyboard extends StatelessWidget {
   }
 }
 
-class _TextKeyboard extends StatelessWidget {
+enum _TextKeyboardLayer { letters, symbols }
+
+class _TextKeyboard extends StatefulWidget {
   final bool visible;
   final ValueChanged<String> onInput;
   final VoidCallback onBackspace;
@@ -1020,39 +1028,63 @@ class _TextKeyboard extends StatelessWidget {
   });
 
   @override
+  State<_TextKeyboard> createState() => _TextKeyboardState();
+}
+
+class _TextKeyboardState extends State<_TextKeyboard> {
+  _TextKeyboardLayer _layer = _TextKeyboardLayer.letters;
+
+  void _toggleLayer() {
+    setState(() {
+      _layer = _layer == _TextKeyboardLayer.letters
+          ? _TextKeyboardLayer.symbols
+          : _TextKeyboardLayer.letters;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final showingSymbols = _layer == _TextKeyboardLayer.symbols;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         _TextKeyboardNumberRow(
-          visible: visible,
-          onInput: onInput,
-          onBackspace: onBackspace,
+          visible: widget.visible,
+          onInput: widget.onInput,
+          onBackspace: widget.onBackspace,
         ),
-        _TextKeyboardRow(
-          visible: visible,
-          keys: const ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
-          onInput: onInput,
-        ),
-        _TextKeyboardRow(
-          visible: visible,
-          keys: const ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
-          horizontalPadding: 18,
-          onInput: onInput,
-        ),
-        _TextKeyboardRow(
-          visible: visible,
-          keys: const ['Z', 'X', 'C', 'V', 'B', 'N', 'M'],
-          horizontalPadding: 54,
-          onInput: onInput,
-        ),
+        if (showingSymbols)
+          _TextKeyboardSymbols(
+            visible: widget.visible,
+            onInput: widget.onInput,
+          )
+        else ...[
+          _TextKeyboardRow(
+            visible: widget.visible,
+            keys: const ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+            onInput: widget.onInput,
+          ),
+          _TextKeyboardRow(
+            visible: widget.visible,
+            keys: const ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+            horizontalPadding: 18,
+            onInput: widget.onInput,
+          ),
+          _TextKeyboardRow(
+            visible: widget.visible,
+            keys: const ['Z', 'X', 'C', 'V', 'B', 'N', 'M'],
+            horizontalPadding: 54,
+            onInput: widget.onInput,
+          ),
+        ],
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: Row(
             children: [
               Expanded(
                 child: _KeyboardWaveItem(
-                  visible: visible,
+                  visible: widget.visible,
                   index: 0,
                   child: _NumPadButton(
                     label: '',
@@ -1060,40 +1092,87 @@ class _TextKeyboard extends StatelessWidget {
                     compactText: true,
                     foregroundColor: MonalisaColors.textMuted,
                     hoverForegroundColor: MonalisaColors.danger,
-                    onPressed: onCancel,
+                    onPressed: widget.onCancel,
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                flex: 6,
                 child: _KeyboardWaveItem(
-                  visible: visible,
+                  visible: widget.visible,
                   index: 1,
+                  child: _NumPadButton(
+                    label: showingSymbols ? 'ABC' : '#+=',
+                    compactText: true,
+                    onPressed: _toggleLayer,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 5,
+                child: _KeyboardWaveItem(
+                  visible: widget.visible,
+                  index: 2,
                   child: _NumPadButton(
                     label: 'Espaco',
                     compactText: true,
-                    onPressed: () => onInput(' '),
+                    onPressed: () => widget.onInput(' '),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: _KeyboardWaveItem(
-                  visible: visible,
-                  index: 2,
+                  visible: widget.visible,
+                  index: 3,
                   child: _NumPadButton(
                     label: '',
                     icon: Icons.check_rounded,
                     compactText: true,
                     backgroundColor: MonalisaColors.success,
                     foregroundColor: Colors.white,
-                    onPressed: onConfirm,
+                    onPressed: widget.onConfirm,
                   ),
                 ),
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TextKeyboardSymbols extends StatelessWidget {
+  final bool visible;
+  final ValueChanged<String> onInput;
+
+  const _TextKeyboardSymbols({
+    required this.visible,
+    required this.onInput,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _TextKeyboardRow(
+          visible: visible,
+          keys: const ['@', '#', r'$', '%', '&', '*', '/'],
+          onInput: onInput,
+        ),
+        _TextKeyboardRow(
+          visible: visible,
+          keys: const ['(', ')', '\\', '?', '=', '-', '+'],
+          onInput: onInput,
+        ),
+        _TextKeyboardRow(
+          visible: visible,
+          keys: const [',', '.', ';', ':', '<', '>'],
+          horizontalPadding: 45,
+          onInput: onInput,
         ),
       ],
     );
@@ -1136,12 +1215,8 @@ class _TextKeyboardNumberRow extends StatelessWidget {
             child: _KeyboardWaveItem(
               visible: visible,
               index: keys.length,
-              child: _NumPadButton(
-                label: '',
-                icon: Icons.backspace_outlined,
-                compactText: true,
-                foregroundColor: MonalisaColors.textMuted,
-                onPressed: onBackspace,
+              child: _RepeatingBackspaceButton(
+                onBackspace: onBackspace,
               ),
             ),
           ),
@@ -1284,9 +1359,64 @@ class _KeyboardWaveItemState extends State<_KeyboardWaveItem> {
   }
 }
 
+class _RepeatingBackspaceButton extends StatefulWidget {
+  final VoidCallback onBackspace;
+
+  const _RepeatingBackspaceButton({
+    required this.onBackspace,
+  });
+
+  @override
+  State<_RepeatingBackspaceButton> createState() =>
+      _RepeatingBackspaceButtonState();
+}
+
+class _RepeatingBackspaceButtonState extends State<_RepeatingBackspaceButton> {
+  static const _repeatInterval = Duration(milliseconds: 70);
+
+  Timer? _repeatTimer;
+
+  @override
+  void dispose() {
+    _stopRepeating();
+    super.dispose();
+  }
+
+  void _startRepeating() {
+    widget.onBackspace();
+    _repeatTimer?.cancel();
+    _repeatTimer = Timer.periodic(
+      _repeatInterval,
+      (_) => widget.onBackspace(),
+    );
+  }
+
+  void _stopRepeating() {
+    _repeatTimer?.cancel();
+    _repeatTimer = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerUp: (_) => _stopRepeating(),
+      onPointerCancel: (_) => _stopRepeating(),
+      child: _NumPadButton(
+        label: '',
+        icon: Icons.backspace_outlined,
+        compactText: true,
+        foregroundColor: MonalisaColors.textMuted,
+        onPressed: widget.onBackspace,
+        onLongPress: _startRepeating,
+      ),
+    );
+  }
+}
+
 class _NumPadButton extends StatelessWidget {
   final String label;
   final VoidCallback onPressed;
+  final VoidCallback? onLongPress;
   final Color? backgroundColor;
   final Color? foregroundColor;
   final Color? hoverForegroundColor;
@@ -1296,6 +1426,7 @@ class _NumPadButton extends StatelessWidget {
   const _NumPadButton({
     required this.label,
     required this.onPressed,
+    this.onLongPress,
     this.backgroundColor,
     this.foregroundColor,
     this.hoverForegroundColor,
@@ -1318,9 +1449,8 @@ class _NumPadButton extends StatelessWidget {
     final pressedOverlay = isNeutralButton
         ? primary.withValues(alpha: 0.14)
         : foregroundColor.withValues(alpha: 0.16);
-    final hoverBorderColor = isNeutralButton
-        ? primary.withValues(alpha: 0.75)
-        : backgroundColor;
+    final hoverBorderColor =
+        isNeutralButton ? primary.withValues(alpha: 0.75) : backgroundColor;
     final foreground = WidgetStateProperty.resolveWith<Color>((states) {
       if (states.contains(WidgetState.hovered) ||
           states.contains(WidgetState.focused)) {
@@ -1376,6 +1506,7 @@ class _NumPadButton extends StatelessWidget {
     final button = isNeutralButton
         ? OutlinedButton(
             onPressed: onPressed,
+            onLongPress: onLongPress,
             style: style.copyWith(
               backgroundColor: WidgetStateProperty.resolveWith((states) {
                 if (states.contains(WidgetState.pressed)) {
@@ -1414,6 +1545,7 @@ class _NumPadButton extends StatelessWidget {
           )
         : ElevatedButton(
             onPressed: onPressed,
+            onLongPress: onLongPress,
             style: style.copyWith(
               backgroundColor: WidgetStatePropertyAll(backgroundColor),
               foregroundColor: foreground,
